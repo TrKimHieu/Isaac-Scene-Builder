@@ -1,0 +1,478 @@
+{
+  "SM_SecretaryDeskA": {
+    "shape": "bbox",
+    "w": 0.797,
+    "h": 2.801,
+    "r": 1.454,
+    "mesh": "mesh_shapes/SM_SecretaryDeskA.png"
+  },
+  "SM_SecretaryDeskB": {
+    "shape": "bbox",
+    "w": 0.797,
+    "h": 1.198,
+    "r": 1.261,
+    "mesh": "mesh_shapes/SM_SecretaryDeskB.png"
+  },
+  "SM_InformationDesk_A": {
+    "shape": "bbox",
+    "w": 0.337,
+    "h": 0.264,
+    "r": 0.213,
+    "mesh": "mesh_shapes/SM_InformationDesk_A.png"
+  },
+  "SM_InformationDesk_B": {
+    "shape": "bbox",
+    "w": 0.337,
+    "h": 0.264,
+    "r": 0.213,
+    "mesh": "mesh_shapes/SM_InformationDesk_B.png"
+  },
+  "SM_ChairOffice": {
+    "shape": "bbox",
+    "w": 0.63,
+    "h": 0.645,
+    "r": 0.427,
+    "mesh": "mesh_shapes/SM_ChairOffice.png"
+  },
+  "SM_ChairOffice_A": {
+    "shape": "bbox",
+    "w": 0.683,
+    "h": 0.577,
+    "r": 0.466,
+    "mesh": "mesh_shapes/SM_ChairOffice_A.png"
+  },
+  "SM_Armchair": {
+    "shape": "bbox",
+    "w": 0.82,
+    "h": 1.037,
+    "r": 0.659,
+    "mesh": "mesh_shapes/SM_Armchair.png"
+  },
+  "SM_Sofa": {
+    "shape": "bbox",
+    "w": 0.82,
+    "h": 2.039,
+    "r": 1.097,
+    "mesh": "mesh_shapes/SM_Sofa.png"
+  },
+  "SM_Chair": {
+    "shape": "bbox",
+    "w": 0.583,
+    "h": 0.598,
+    "r": 0.429,
+    "mesh": "mesh_shapes/SM_Chair.png"
+  },
+  "SM_FileCabinet_01": {
+    "shape": "bbox",
+    "w": 0.703,
+    "h": 0.393,
+    "r": 0.386,
+    "mesh": "mesh_shapes/SM_FileCabinet_01.png"
+  },
+  "SM_FileCabinet_02": {
+    "shape": "bbox",
+    "w": 0.703,
+    "h": 0.393,
+    "r": 0.386,
+    "mesh": "mesh_shapes/SM_FileCabinet_02.png"
+  },
+  "SM_FileCabinet_03": {
+    "shape": "bbox",
+    "w": 0.841,
+    "h": 0.39,
+    "r": 0.505,
+    "mesh": "mesh_shapes/SM_FileCabinet_03.png"
+  },
+  "SM_BookcaseA": {
+    "shape": "bbox",
+    "w": 0.416,
+    "h": 1.84,
+    "r": 0.94,
+    "mesh": "mesh_shapes/SM_BookcaseA.png"
+  },
+  "SM_Rack": {
+    "shape": "bbox",
+    "w": 0.609,
+    "h": 1.219,
+    "r": 0.678,
+    "mesh": "mesh_shapes/SM_Rack.png"
+  },
+  "SM_RackA": {
+    "shape": "bbox",
+    "w": 0.609,
+    "h": 1.219,
+    "r": 0.678,
+    "mesh": "mesh_shapes/SM_RackA.png"
+  },
+  "SM_TrashCan": {
+    "shape": "bbox",
+    "w": 0.299,
+    "h": 0.299,
+    "r": 0.149,
+    "mesh": "mesh_shapes/SM_TrashCan.png"
+  },
+  "SM_TrashCan_01": {
+    "shape": "bbox",
+    "w": 0.252,
+    "h": 0.252,
+    "r": 0.168,
+    "mesh": "mesh_shapes/SM_TrashCan_01.png"
+  },
+  "SM_DrinksMachine": {
+    "shape": "bbox",
+    "w": 0.844,
+    "h": 1.213,
+    "r": 1.037,
+    "mesh": "mesh_shapes/SM_DrinksMachine.png"
+  },
+  "SM_Printer": {
+    "shape": "bbox",
+    "w": 0.46,
+    "h": 0.565,
+    "r": 0.349,
+    "mesh": "mesh_shapes/SM_Printer.png"
+  },
+  "SM_Plant01": {
+    "shape": "bbox",
+    "w": 1.269,
+    "h": 1.438,
+    "r": 0.743,
+    "mesh": "mesh_shapes/SM_Plant01.png"
+  },
+  "SM_Plant02": {
+    "shape": "bbox",
+    "w": 0.832,
+    "h": 0.94,
+    "r": 0.538,
+    "mesh": "mesh_shapes/SM_Plant02.png"
+  },
+  "SM_Plant03": {
+    "shape": "bbox",
+    "w": 0.768,
+    "h": 0.812,
+    "r": 0.499,
+    "mesh": "mesh_shapes/SM_Plant03.png"
+  },
+  "SM_TableA": {
+    "shape": "bbox",
+    "w": 1.749,
+    "h": 2.455,
+    "r": 1.504,
+    "mesh": "mesh_shapes/SM_TableA.png"
+  },
+  "SM_TableB": {
+    "shape": "bbox",
+    "w": 0.8,
+    "h": 2.801,
+    "r": 1.454,
+    "mesh": "mesh_shapes/SM_TableB.png"
+  },
+  "SM_TableC": {
+    "shape": "bbox",
+    "w": 0.598,
+    "h": 1.201,
+    "r": 0.669,
+    "mesh": "mesh_shapes/SM_TableC.png"
+  },
+  "SM_TableD": {
+    "shape": "bbox",
+    "w": 0.896,
+    "h": 1.995,
+    "r": 1.09,
+    "mesh": "mesh_shapes/SM_TableD.png"
+  },
+  "SM_TableD2": {
+    "shape": "bbox",
+    "w": 0.896,
+    "h": 1.33,
+    "r": 1.399,
+    "mesh": "mesh_shapes/SM_TableD2.png"
+  },
+  "SM_TableCoffee": {
+    "shape": "bbox",
+    "w": 0.498,
+    "h": 0.885,
+    "r": 0.507,
+    "mesh": "mesh_shapes/SM_TableCoffee.png"
+  },
+  "SM_TableRound_module": {
+    "shape": "bbox",
+    "w": 1.248,
+    "h": 1.248,
+    "r": 0.88,
+    "mesh": "mesh_shapes/SM_TableRound_module.png"
+  },
+  "SM_TableWorkSecurity": {
+    "shape": "bbox",
+    "w": 0.8,
+    "h": 1.699,
+    "r": 0.936,
+    "mesh": "mesh_shapes/SM_TableWorkSecurity.png"
+  },
+  "SM_TableWorkingDouble": {
+    "shape": "bbox",
+    "w": 1.699,
+    "h": 1.699,
+    "r": 1.199,
+    "mesh": "mesh_shapes/SM_TableWorkingDouble.png"
+  },
+  "SM_StandTableWork": {
+    "shape": "bbox",
+    "w": 0.469,
+    "h": 0.398,
+    "r": 0.306,
+    "mesh": "mesh_shapes/SM_StandTableWork.png"
+  },
+  "SM_ReceptionTableStraight": {
+    "shape": "bbox",
+    "w": 0.858,
+    "h": 1.998,
+    "r": 1.261,
+    "mesh": "mesh_shapes/SM_ReceptionTableStraight.png"
+  },
+  "SM_ReceptionTableCornerOutside": {
+    "shape": "bbox",
+    "w": 2.08,
+    "h": 2.08,
+    "r": 1.47,
+    "mesh": "mesh_shapes/SM_ReceptionTableCornerOutside.png"
+  },
+  "SM_StandForPapers": {
+    "shape": "bbox",
+    "w": 0.246,
+    "h": 0.316,
+    "r": 0.198,
+    "mesh": "mesh_shapes/SM_StandForPapers.png"
+  },
+  "SM_Recliner": {
+    "shape": "bbox",
+    "w": 0.662,
+    "h": 0.645,
+    "r": 0.46,
+    "mesh": "mesh_shapes/SM_Recliner.png"
+  },
+  "SM_Cupboard": {
+    "shape": "bbox",
+    "w": 0.416,
+    "h": 1.84,
+    "r": 0.949,
+    "mesh": "mesh_shapes/SM_Cupboard.png"
+  },
+  "SM_PaperCase_Case": {
+    "shape": "bbox",
+    "w": 0.448,
+    "h": 1.904,
+    "r": 1.044,
+    "mesh": "mesh_shapes/SM_PaperCase_Case.png"
+  },
+  "SM_ReceptionClosets": {
+    "shape": "bbox",
+    "w": 0.498,
+    "h": 2.602,
+    "r": 1.388,
+    "mesh": "mesh_shapes/SM_ReceptionClosets.png"
+  },
+  "SM_Rack1m": {
+    "shape": "bbox",
+    "w": 0.609,
+    "h": 1.219,
+    "r": 0.678,
+    "mesh": "mesh_shapes/SM_Rack1m.png"
+  },
+  "SM_Reception": {
+    "shape": "bbox",
+    "w": 0.601,
+    "h": 2.982,
+    "r": 1.619,
+    "mesh": "mesh_shapes/SM_Reception.png"
+  },
+  "SM_ReceptionStandA": {
+    "shape": "bbox",
+    "w": 0.688,
+    "h": 0.357,
+    "r": 0.387,
+    "mesh": "mesh_shapes/SM_ReceptionStandA.png"
+  },
+  "SM_ReceptionStandB": {
+    "shape": "bbox",
+    "w": 0.873,
+    "h": 0.258,
+    "r": 0.79,
+    "mesh": "mesh_shapes/SM_ReceptionStandB.png"
+  },
+  "SM_WaterCooler": {
+    "shape": "bbox",
+    "w": 0.34,
+    "h": 0.419,
+    "r": 0.25,
+    "mesh": "mesh_shapes/SM_WaterCooler.png"
+  },
+  "SM_Toilet": {
+    "shape": "bbox",
+    "w": 0.56,
+    "h": 0.357,
+    "r": 0.558,
+    "mesh": "mesh_shapes/SM_Toilet.png"
+  },
+  "SM_ToiletClosed": {
+    "shape": "bbox",
+    "w": 0.56,
+    "h": 0.357,
+    "r": 0.558,
+    "mesh": "mesh_shapes/SM_ToiletClosed.png"
+  },
+  "SM_Urinal": {
+    "shape": "bbox",
+    "w": 0.398,
+    "h": 0.346,
+    "r": 0.418,
+    "mesh": "mesh_shapes/SM_Urinal.png"
+  },
+  "SM_Washbasin": {
+    "shape": "bbox",
+    "w": 0.548,
+    "h": 0.996,
+    "r": 0.738,
+    "mesh": "mesh_shapes/SM_Washbasin.png"
+  },
+  "SM_Extinguisher": {
+    "shape": "bbox",
+    "w": 0.17,
+    "h": 0.252,
+    "r": 0.125,
+    "mesh": "mesh_shapes/SM_Extinguisher.png"
+  },
+  "SM_FireCabinetA": {
+    "shape": "bbox",
+    "w": 0.299,
+    "h": 0.797,
+    "r": 0.496,
+    "mesh": "mesh_shapes/SM_FireCabinetA.png"
+  },
+  "SM_FireCabinetB": {
+    "shape": "bbox",
+    "w": 0.299,
+    "h": 0.451,
+    "r": 0.372,
+    "mesh": "mesh_shapes/SM_FireCabinetB.png"
+  },
+  "SM_VaseDecorative": {
+    "shape": "bbox",
+    "w": 0.357,
+    "h": 0.357,
+    "r": 0.178,
+    "mesh": "mesh_shapes/SM_VaseDecorative.png"
+  },
+  "SM_ColumnA": {
+    "shape": "bbox",
+    "w": 1.02,
+    "h": 1.02,
+    "r": 0.709,
+    "mesh": "mesh_shapes/SM_ColumnA.png"
+  },
+  "SM_ColumnD": {
+    "shape": "bbox",
+    "w": 0.51,
+    "h": 1.02,
+    "r": 0.709,
+    "mesh": "mesh_shapes/SM_ColumnD.png"
+  },
+  "SM_Elevator": {
+    "shape": "bbox",
+    "w": 1.5,
+    "h": 1.96,
+    "r": 1.789,
+    "mesh": "mesh_shapes/SM_Elevator.png"
+  },
+  "AV_CapriceBackless_A": {
+    "shape": "bbox",
+    "w": 0.697,
+    "h": 0.697,
+    "r": 0.35,
+    "mesh": "mesh_shapes/AV_CapriceBackless_A.png"
+  },
+  "AV_CapriceTable_A": {
+    "shape": "bbox",
+    "w": 0.469,
+    "h": 0.469,
+    "r": 0.319,
+    "mesh": "mesh_shapes/AV_CapriceTable_A.png"
+  },
+  "AV_CapriceTable_B": {
+    "shape": "bbox",
+    "w": 0.469,
+    "h": 0.469,
+    "r": 0.341,
+    "mesh": "mesh_shapes/AV_CapriceTable_B.png"
+  },
+  "AV_Caprice_A": {
+    "shape": "bbox",
+    "w": 0.697,
+    "h": 0.697,
+    "r": 0.35,
+    "mesh": "mesh_shapes/AV_Caprice_A.png"
+  },
+  "AV_Caprice_B": {
+    "shape": "bbox",
+    "w": 0.633,
+    "h": 0.697,
+    "r": 0.375,
+    "mesh": "mesh_shapes/AV_Caprice_B.png"
+  },
+  "AV_Caprice_C": {
+    "shape": "bbox",
+    "w": 0.562,
+    "h": 0.697,
+    "r": 0.35,
+    "mesh": "mesh_shapes/AV_Caprice_C.png"
+  },
+  "AV_Contemporary_Hutch": {
+    "shape": "bbox",
+    "w": 1.805,
+    "h": 0.375,
+    "r": 0.919,
+    "mesh": "mesh_shapes/AV_Contemporary_Hutch.png"
+  },
+  "AV_Contemporary_LockedStorage": {
+    "shape": "bbox",
+    "w": 0.867,
+    "h": 0.595,
+    "r": 0.525,
+    "mesh": "mesh_shapes/AV_Contemporary_LockedStorage.png"
+  },
+  "AV_Contemporary_OpenStorage": {
+    "shape": "bbox",
+    "w": 0.867,
+    "h": 0.557,
+    "r": 0.513,
+    "mesh": "mesh_shapes/AV_Contemporary_OpenStorage.png"
+  },
+  "AV_Contemporary_StorageCube": {
+    "shape": "bbox",
+    "w": 0.375,
+    "h": 0.375,
+    "r": 0.261,
+    "mesh": "mesh_shapes/AV_Contemporary_StorageCube.png"
+  },
+  "AV_Standard_HalfUnit": {
+    "shape": "bbox",
+    "w": 0.398,
+    "h": 0.398,
+    "r": 0.28,
+    "mesh": "mesh_shapes/AV_Standard_HalfUnit.png"
+  },
+  "AV_Standard_LargeUnit": {
+    "shape": "bbox",
+    "w": 0.797,
+    "h": 0.398,
+    "r": 0.444,
+    "mesh": "mesh_shapes/AV_Standard_LargeUnit.png"
+  },
+  "AV_Standard_SmallUnit": {
+    "shape": "bbox",
+    "w": 0.797,
+    "h": 0.398,
+    "r": 0.444,
+    "mesh": "mesh_shapes/AV_Standard_SmallUnit.png"
+  }
+}
