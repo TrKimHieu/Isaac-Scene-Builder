@@ -1,20 +1,20 @@
 """
-shape_editor.py - Cua so ve bounding box/sphere thu cong tren anh BEV render
-(nen trang) de set w,h hoac r va tu cat shape.
+shape_editor.py - Window to manually draw a bounding box/sphere on a BEV render
+(white background) to set w,h or r and auto-cut the shape.
 
-Cach dung:
-    python src/shape_editor.py [thu_muc_anh]
+Usage:
+    python src/shape_editor.py [render_dir]
 
-Mac dinh doc anh render tu: output/mesh_shapes/renders/*.png
-(anh nay do isaac_bev_capture.py sinh ra - dong khung vua khit 1 o 3x3 m).
+Reads renders from: output/mesh_shapes/renders/*.png by default
+(produced by isaac_bev_capture.py - framed exactly to one 3x3 m cell).
 
-Thao tac:
-  BOX    (1): keo chuot de ve hinh chu nhat bao -> tu tinh W,H (met)
-  CIRCLE (2): keo tu TAM ra ngoai de dat ban kinh -> tu tinh R (met)
-  Auto-fit (A): tu bao khit vung khong-trang (object)
-  Cut & Save (S): cat shape (object=den, nen=trang) luu mesh_shapes/<asset>.png
-                  va ghi W/H hoac R vao props_shapes.json (scene_editor dung lam mac dinh)
-  <- / -> : anh truoc / sau | Esc thoat
+Controls:
+  BOX    (1): drag to draw the bounding rectangle -> auto W,H (m)
+  CIRCLE (2): drag from the CENTER outward to set the radius -> auto R (m)
+  Auto-fit (A): auto-fit the non-white region (object)
+  Cut & Save (S): cut the shape (object=black, bg=white) into mesh_shapes/<asset>.png
+                  and write W/H or R into props_shapes.json (used as default by scene_editor)
+  <- / -> : previous / next image | Esc quit
 """
 import os
 import sys
@@ -51,18 +51,18 @@ class ShapeEditor:
         self.render_dir = render_dir
         self.files = self._scan()
         self.idx = 0
-        self.img = None            # PIL RGB anh goc
-        self.tex = None            # pygame Surface hien thi
+        self.img = None            # original PIL RGB image
+        self.tex = None            # pygame Surface for display
         self.mode = "box"          # "box" | "circle"
-        self.box = None            # (x0,y0,x1,y1) toa do PIXEL ANH
-        self.circle = None         # (cx,cy,rad) pixel anh
-        self.drag_from = None      # diem bat dau keo (pixel anh)
+        self.box = None            # (x0,y0,x1,y1) in IMAGE PIXEL coords
+        self.circle = None         # (cx,cy,rad) in image pixels
+        self.drag_from = None      # drag start point (image pixels)
         self.buttons = []
-        self.msg = "Keo chuot de ve bounding. A = auto-fit, S = cat & luu."
+        self.msg = "Drag to draw a bounding shape. A = auto-fit, S = cut & save."
         if self.files:
             self.load(0)
         else:
-            self.msg = "Khong thay anh render trong: %s" % self.render_dir
+            self.msg = "No renders found in: %s" % self.render_dir
         self._recalc()
 
     # ---- data ----
@@ -85,7 +85,7 @@ class ShapeEditor:
         self.circle = None
         self.drag_from = None
         self._make_tex()
-        self.msg = "Anh: %s (%dx%d px, %.3f m/px)" % (
+        self.msg = "Image: %s (%dx%d px, %.3f m/px)" % (
             self.files[self.idx], self.img.width, self.img.height,
             st.meters_per_pixel(self.img.width, CELL))
 
@@ -120,7 +120,7 @@ class ShapeEditor:
             return
         box = st.auto_bbox(self.img)
         if box is None:
-            self.msg = "Anh toan trang - khong tim thay object."
+            self.msg = "Image is all white - no object found."
             return
         if self.mode == "box":
             self.box = box
@@ -129,10 +129,10 @@ class ShapeEditor:
             cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
             rad = max(x1 - x0, y1 - y0) / 2
             self.circle = (cx, cy, rad)
-        self.msg = "Auto-fit xong. Chinh lai neu can roi bam S de luu."
+        self.msg = "Auto-fit done. Adjust if needed, then press S to save."
 
     def measured(self):
-        """Tra (shape, w, h, r) met theo hinh dang hien tai, hoac None."""
+        """Return (shape, w, h, r) in meters for the current shape, or None."""
         if self.img is None:
             return None
         iw = self.img.width
@@ -147,7 +147,7 @@ class ShapeEditor:
     def cut_and_save(self):
         m = self.measured()
         if m is None or self.asset is None:
-            self.msg = "Chua ve bounding."
+            self.msg = "No bounding drawn yet."
             return
         shape, w, h, r = m
         mesh_dir = bev.MESH_DIR
@@ -161,7 +161,7 @@ class ShapeEditor:
         st.save_shape_png(mask, self.asset, mesh_dir)
         rel = "mesh_shapes/%s.png" % self.asset
         bev.save_prop_shape(self.asset, shape, w, h, r, mesh=rel)
-        self.msg = "Da luu %s.png + props_shapes.json | %s w=%.2f h=%.2f r=%.2f" % (
+        self.msg = "Saved %s.png + props_shapes.json | %s w=%.2f h=%.2f r=%.2f" % (
             self.asset, shape, w, h, r)
 
     # ---- input ----
@@ -248,25 +248,25 @@ class ShapeEditor:
         pygame.draw.line(self.screen, SECTION, (px + 16, y), (px + PANEL_W - 16, y)); y += 12
 
         # asset info
-        name = self.asset or "(khong co anh)"
+        name = self.asset or "(no image)"
         self.screen.blit(self.font.render(name, True, TEXT), (px + 16, y)); y += 20
         if self.files:
             self.screen.blit(self.font_s.render("%d / %d" % (self.idx + 1, len(self.files)),
                              True, TEXT_DIM), (px + 16, y)); y += 22
         bw = (PANEL_W - 32 - 10) // 2
-        self._btn(px + 16, y, bw, "< Truoc", "prev", mx, my)
-        self._btn(px + 16 + bw + 10, y, bw, "Sau >", "next", mx, my); y += 34
+        self._btn(px + 16, y, bw, "< Prev", "prev", mx, my)
+        self._btn(px + 16 + bw + 10, y, bw, "Next >", "next", mx, my); y += 34
         pygame.draw.line(self.screen, SECTION, (px + 16, y), (px + PANEL_W - 16, y)); y += 12
 
         # mode
-        self.screen.blit(self.font_s.render("KIEU BOUNDING", True, TEXT_DIM), (px + 16, y)); y += 18
+        self.screen.blit(self.font_s.render("BOUNDING TYPE", True, TEXT_DIM), (px + 16, y)); y += 18
         self._btn(px + 16, y, bw, "1 Box", "box", mx, my, active=(self.mode == "box"))
         self._btn(px + 16 + bw + 10, y, bw, "2 Circle", "circle", mx, my, active=(self.mode == "circle"))
         y += 34
 
         # measured
         m = self.measured()
-        self.screen.blit(self.font_s.render("KICH THUOC (met)", True, TEXT_DIM), (px + 16, y)); y += 20
+        self.screen.blit(self.font_s.render("SIZE (meters)", True, TEXT_DIM), (px + 16, y)); y += 20
         if m:
             shape, w, h, r = m
             if shape == "bbox":
@@ -274,15 +274,15 @@ class ShapeEditor:
             else:
                 lines = ["R = %.3f" % r]
         else:
-            lines = ["(chua ve bounding)"]
+            lines = ["(no bounding yet)"]
         for ln in lines:
             self.screen.blit(self.font.render(ln, True, ACCENT), (px + 24, y)); y += 22
         y += 6
 
         self._btn(px + 16, y, PANEL_W - 32, "Auto-fit object (A)", "auto", mx, my); y += 34
-        self._btn(px + 16, y, PANEL_W - 32, "Cat & Luu shape (S)", "save", mx, my); y += 40
+        self._btn(px + 16, y, PANEL_W - 32, "Cut & Save shape (S)", "save", mx, my); y += 40
         pygame.draw.line(self.screen, SECTION, (px + 16, y), (px + PANEL_W - 16, y)); y += 10
-        self._btn(px + 16, y, PANEL_W - 32, "Tai lai danh sach (R)", "reload", mx, my)
+        self._btn(px + 16, y, PANEL_W - 32, "Reload list (R)", "reload", mx, my)
 
     def _btn(self, x, y, w, label, key, mx, my, active=False, h=28):
         rect = pygame.Rect(x, y, w, h)

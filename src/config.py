@@ -33,8 +33,8 @@ def project_path(*parts):
 # ===========================================================================
 # World / Physics
 # ===========================================================================
-CELL = 3.0          # kich thuoc 1 o luoi (m)
-SNAP = 0.5          # buoc bat dinh khi dat/di chuyen furniture (m) - min mau
+CELL = 3.0          # size of one grid cell (m)
+SNAP = 0.5          # snap step when placing/moving furniture (m)
 WALL_H = 3.0
 
 # ===========================================================================
@@ -75,15 +75,15 @@ FURNITURE = [
 ]
 
 FURNITURE_CATEGORIES = {
-    "Ban lam viec": ["SM_SecretaryDeskA", "SM_SecretaryDeskB",
-                     "SM_InformationDesk_A", "SM_InformationDesk_B"],
-    "Ghe": ["SM_ChairOffice", "SM_ChairOffice_A", "SM_Armchair",
-            "SM_Chair", "SM_Sofa"],
-    "Tu / Ke": ["SM_FileCabinet_01", "SM_FileCabinet_02", "SM_FileCabinet_03",
-                "SM_BookcaseA", "SM_Rack", "SM_RackA"],
-    "May moc": ["SM_Printer", "SM_DrinksMachine"],
-    "Trang tri": ["SM_Plant01", "SM_Plant02", "SM_Plant03",
-                  "SM_TrashCan", "SM_TrashCan_01"],
+    "Desks": ["SM_SecretaryDeskA", "SM_SecretaryDeskB",
+              "SM_InformationDesk_A", "SM_InformationDesk_B"],
+    "Chairs": ["SM_ChairOffice", "SM_ChairOffice_A", "SM_Armchair",
+               "SM_Chair", "SM_Sofa"],
+    "Cabinets": ["SM_FileCabinet_01", "SM_FileCabinet_02", "SM_FileCabinet_03",
+                 "SM_BookcaseA", "SM_Rack", "SM_RackA"],
+    "Machines": ["SM_Printer", "SM_DrinksMachine"],
+    "Decor": ["SM_Plant01", "SM_Plant02", "SM_Plant03",
+              "SM_TrashCan", "SM_TrashCan_01"],
 }
 
 # Extra furniture for shape extraction (from Office pack)

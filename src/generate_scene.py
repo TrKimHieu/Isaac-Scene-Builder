@@ -1,14 +1,14 @@
 """
-Procedural scene generator cho thu vien props Office (Isaac Sim / OpenUSD).
+Procedural scene generator for the Office props library (Isaac Sim / OpenUSD).
 
-Sinh ra mot phong hinh chu nhat (san + tran + tuong ghep tu module 3m),
-rai noi that ngau nhien ben trong, va gan den tran da bat san.
+Generates a rectangular room (floor + ceiling + walls made of 3m modules),
+scatters furniture randomly inside, and adds on-by-default ceiling lights.
 
-- Don vi: 1 unit = 1 met, truc len = Z (giong office.usd goc).
+- Units: 1 unit = 1 meter, up-axis = Z (like the original office.usd).
 - Scene.usd chi tham chieu (reference) toi assets/office/Props/*.usd -> file rat nhe.
 
 Chay:
-    python src/generate_scene.py                  # dung tham so mac dinh
+    python src/generate_scene.py                  # use default parameters
     python src/generate_scene.py --cells-x 5 --cells-y 4 --seed 7 --furniture 40
 """
 import argparse
@@ -24,10 +24,10 @@ from scene_builder import (place, asset_exists, check_required,
 
 
 def build_shell(stage, root, nx, ny, door_cell):
-    """San + tran + 4 buc tuong bao quanh phong nx*ny o (moi o = 3m)."""
+    """Floor + ceiling + 4 boundary walls around an nx*ny room (each cell = 3m)."""
     W, D = nx * CELL, ny * CELL
 
-    # San + tran
+    # Floor + ceiling
     for i in range(nx):
         for j in range(ny):
             place(stage, f"{root}/Structure/Floor_{i}_{j}", FLOOR,
@@ -35,27 +35,27 @@ def build_shell(stage, root, nx, ny, door_cell):
             place(stage, f"{root}/Structure/Ceiling_{i}_{j}", CEILING,
                   (i * CELL, j * CELL, WALL_H))
 
-    # Tuong West (X=0, chay +Y) -> khong xoay
+    # West wall (X=0, runs +Y) -> no rotation
     for j in range(ny):
         place(stage, f"{root}/Structure/WallW_{j}", WALL,
               (0.0, j * CELL, 0.0), rot_z=0)
-    # East (X=W) -> xoay 180
+    # East (X=W) -> rotate 180
     for j in range(ny):
         place(stage, f"{root}/Structure/WallE_{j}", WALL,
               (W, (j + 1) * CELL, 0.0), rot_z=180)
-    # South (Y=0, chay +X) -> xoay -90. O door_cell dung module co cua.
+    # South (Y=0, runs +X) -> rotate -90. At door_cell use the door module.
     for i in range(nx):
         a = WALL_DOOR if i == door_cell else WALL
         place(stage, f"{root}/Structure/WallS_{i}", a,
               (i * CELL, 0.0, 0.0), rot_z=-90)
-    # North (Y=D) -> xoay +90
+    # North (Y=D) -> rotate +90
     for i in range(nx):
         place(stage, f"{root}/Structure/WallN_{i}", WALL,
               ((i + 1) * CELL, D, 0.0), rot_z=90)
 
 
 def scatter_furniture(stage, root, nx, ny, count, furniture, rng):
-    """Rai noi that ngau nhien, tranh chong lan bang kiem tra khoang cach toi thieu."""
+    """Scatter furniture randomly, avoiding overlap via a minimum-distance check."""
     W, D = nx * CELL, ny * CELL
     margin = 0.7
     placed = []
@@ -88,7 +88,7 @@ def main():
 
     furniture = available_furniture()
     if not furniture:
-        raise SystemExit("Khong co prop nao trong %s" % str(furniture))
+        raise SystemExit("No props in %s" % str(furniture))
     rng = random.Random(args.seed)
     nx, ny = args.cells_x, args.cells_y
 
@@ -105,7 +105,7 @@ def main():
     door_cell = rng.randrange(nx)
     build_shell(stage, root, nx, ny, door_cell)
 
-    # Den tran: 1 den moi o
+    # Ceiling lights: one per cell
     for i in range(nx):
         for j in range(ny):
             cx, cy = (i + 0.5) * CELL, (j + 0.5) * CELL
@@ -117,7 +117,7 @@ def main():
     stage.GetRootLayer().Save()
     print(f"Da tao: {args.out}")
     print(f"  Phong: {nx*CELL:.0f} x {ny*CELL:.0f} m ({nx}x{ny} o), cao {WALL_H:.0f} m")
-    print(f"  Den tran: {nx*ny}, noi that: {nf}, cua o o so {door_cell} (tuong South)")
+    print(f"  Ceiling lights: {nx*ny}, furniture: {nf}, door at cell {door_cell} (South wall)")
 
 
 if __name__ == "__main__":

@@ -1,29 +1,29 @@
 """
-scene_editor.py - GUI luoi (pygame) de thiet ke ban do -> sinh sceneX.usd + BEV.
+scene_editor.py - Grid GUI (pygame) to design a map -> generate sceneX.usd + BEV.
 
-Cach dung:
+Usage:
     python src/scene_editor.py
 
-3 cong cu:
-  FLOOR (1) - Click gan TAM o: rong -> san -> san+den -> rong.
-              KEO-THA de to ca vung san hinh chu nhat. Phai-click xoa o.
-  WALL  (2) - Click gan CANH o: none -> tuong -> tuong-cua -> none.
-              KEO-THA doc theo hang/cot de ve doan tuong dai. Phai-click xoa canh.
-  FURNITURE (3) - Chon prop o palette, click o trong de dat (tu dong duoc chon).
-              Click vat da dat de CHON; GIU trai + keo de DI CHUYEN (keo-tha).
-              Panel TRANSFORM: sua X/Y/Yaw va chon SHAPE (BBox / Sphere / Mesh) -
-              chon dang nao thi cac prop dat sau se auto dung dang do. Phai-click
-              mo menu (Chon/Nhan ban/Xoay 90/Xoa). Lan chuot = xoay 5 do/nac.
-Tam nhin:
-  Ctrl + lan chuot = ZOOM (quanh con tro) | GIU nut con lan + keo = PAN (di tam nhin)
-  Home / 0 = reset tam nhin ve 100%%
-Phim tat:
-  1 floor | 2 wall | 3/F furniture | Tab doi cong cu | W auto-walls | C clear
-  S save USD (sceneX.usd) | Ctrl+S save map JSON | L load map moi nhat
-  B  export BEV (CSV + SVG + PNG/PGM) vao output/bev/
-  + / -  doi kich thuoc luoi | R xoay noi that 5 do (dang chon hoac sap dat)
-  F11  bat/tat toan man hinh | keo canh cua so de doi kich thuoc
-  Esc  thoat toan man hinh -> dong menu -> bo chon -> ve floor
+3 tools:
+  FLOOR (1) - Click near a CELL CENTER: empty -> floor -> floor+light -> empty.
+              DRAG to fill a rectangular floor area. Right-click removes a cell.
+  WALL  (2) - Click near a CELL EDGE: none -> wall -> wall-door -> none.
+              DRAG along a row/column to draw a long wall. Right-click clears an edge.
+  FURNITURE (3) - Pick a prop in the palette, click empty space to place (auto-selected).
+              Click a placed prop to SELECT it; HOLD left + drag to MOVE it.
+              TRANSFORM panel: edit X/Y/Yaw and pick a SHAPE (BBox / Sphere / Mesh) -
+              the chosen shape becomes the default for new props. Right-click opens a
+              menu (Select / Duplicate / Rotate 90 / Delete). Wheel = rotate 5 deg/notch.
+View:
+  Ctrl + wheel = ZOOM (around cursor) | HOLD middle button + drag = PAN
+  Home / 0 = reset view to 100%%
+Shortcuts:
+  1 floor | 2 wall | 3/F furniture | Tab switch tool | W auto-walls | C clear
+  S save USD (sceneX.usd) | Ctrl+S save map JSON | L load latest map
+  B  export BEV (CSV + SVG + PNG/PGM) into output/bev/
+  + / -  resize grid | R rotate furniture 5 deg (selected or about-to-place)
+  F11  toggle fullscreen | drag window edge to resize
+  Esc  exit fullscreen -> close menu -> deselect -> back to floor
 """
 import os
 import json
@@ -51,7 +51,7 @@ MIN_W, MIN_H = 900, 680
 PANEL_W = 340
 PAD = 20
 STATUS_H = 46
-EDGE_HIT = 0.24          # nguong bat canh (ti le o)
+EDGE_HIT = 0.24          # edge-snap threshold (cell fraction)
 
 
 class Editor:
@@ -77,9 +77,9 @@ class Editor:
         self.palette = sb.available_furniture()
         self.pal_sel = 0
         self.structure = {}    # override prop cau truc: {"wall":..,"floor":..}
-        self.place_shape = "bbox"   # dang shape mac dinh khi dat prop moi
+        self.place_shape = "bbox"   # default shape when placing a new prop
         self.cur_yaw = 0.0
-        self.msg = "San sang. Cong cu FLOOR: click / keo-tha de to san."
+        self.msg = "Ready. FLOOR tool: click / drag to paint floor."
         self.buttons = []       # (rect, key, label)
 
         self.panel_scroll = 0        # cuon toan bo panel ben phai
@@ -87,29 +87,29 @@ class Editor:
         self._pal_rects = []         # [(idx, Rect)] cho hit-test palette
         self._scroll_to_transform = False
         self._pal_filter = ""        # search filter cho furniture palette
-        self._pal_cat = "Tat ca"     # category filter
-        self._pal_search_active = False  # dang nhap search
+        self._pal_cat = "All"     # category filter
+        self._pal_search_active = False  # entering search text
         self._pal_cat_rects = []     # [(cat_name, Rect)] cho hit-test category tabs
-        self._pal_search_rect = None # Rect cua search field
+        self._pal_search_rect = None # Rect of the search field
 
-        self.selected = None        # index vao self.furniture, hoac None
+        self.selected = None        # index into self.furniture, or None
         self.ctx_menu = None         # {"pos","target","items"}
         self.active_field = None     # "x" | "y" | "yaw" | "w" | "h" | "r" | None
         self.field_buffer = ""
         self.field_rects = {}        # ten field -> Rect (cho hit-test click)
 
         self.drag_start = None       # ("cell",i,j) | ("edge",kind,i,j)
-        self.drag_cur = None         # (mx,my) hien tai khi keo
+        self.drag_cur = None         # current (mx,my) while dragging
         self._mesh_cache = {}        # asset -> (mask_surface, w_m, h_m) | None
 
-        # zoom / pan (tam nhin)
+        # zoom / pan (view)
         self.zoom = 1.0
         self.pan_x = 0.0
         self.pan_y = 0.0
         self.base_cs = 20
-        self.panning = False         # dang keo tam nhin bang nut con lan
+        self.panning = False         # panning the view with the middle button
         self.pan_last = None
-        self.move_drag = None        # index furniture dang keo-tha di chuyen
+        self.move_drag = None        # index of furniture being drag-moved
 
         # undo / redo
         self._undo_stack = []
@@ -117,13 +117,13 @@ class Editor:
         self._max_undo = 50
 
         # named save
-        self.current_map_name = None  # ten file dang edit (None = chua luu)
+        self.current_map_name = None  # current file name (None = unsaved)
 
         self._recalc_layout()
 
     # ---- undo / redo ----
     def _snapshot(self):
-        """Luu state hien tai vao undo stack."""
+        """Save current state to the undo stack."""
         self._undo_stack.append(self.map_data())
         if len(self._undo_stack) > self._max_undo:
             self._undo_stack.pop(0)
@@ -131,25 +131,25 @@ class Editor:
 
     def undo(self):
         if not self._undo_stack:
-            self.msg = "Khong co buoc nao de hoan tac."
+            self.msg = "Nothing to undo."
             return
         self._redo_stack.append(self.map_data())
         self.load_map_data(self._undo_stack.pop())
-        self.msg = "Da hoan tac."
+        self.msg = "Undone."
 
     def redo(self):
         if not self._redo_stack:
-            self.msg = "Khong co buoc nao de phuc hoi."
+            self.msg = "Nothing to redo."
             return
         self._undo_stack.append(self.map_data())
         self.load_map_data(self._redo_stack.pop())
-        self.msg = "Da phuc hoi."
+        self.msg = "Redone."
 
     # ---- furniture palette filter ----
     def filtered_palette(self):
-        """Tra ve danh sach palette da loc theo category + search text."""
+        """Return the palette filtered by category + search text."""
         cats = FURNITURE_CATEGORIES
-        if self._pal_cat != "Tat ca" and self._pal_cat in cats:
+        if self._pal_cat != "All" and self._pal_cat in cats:
             allowed = set(cats[self._pal_cat])
             items = [(n, r) for (n, r) in self.palette if n in allowed]
         else:
@@ -167,13 +167,13 @@ class Editor:
         self._apply_view()
 
     def _apply_view(self):
-        """Cap nhat cs/ox/oy hieu dung tu base_cs + zoom + pan."""
+        """Update effective cs/ox/oy from base_cs + zoom + pan."""
         self.cs = max(4.0, self.base_cs * self.zoom)
         self.ox = PAD + self.pan_x
         self.oy = PAD + self.pan_y
 
     def zoom_at(self, mx, my, factor):
-        """Zoom quanh diem (mx,my): giu diem the gioi duoi con tro co dinh."""
+        """Zoom around (mx,my): keep the world point under the cursor fixed."""
         fx = (mx - self.ox) / self.cs
         fy = (my - self.oy) / self.cs
         self.zoom = max(0.25, min(8.0, self.zoom * factor))
@@ -187,10 +187,10 @@ class Editor:
         self.pan_x = 0.0
         self.pan_y = 0.0
         self._apply_view()
-        self.msg = "Da reset tam nhin (zoom 100%%)."
+        self.msg = "View reset (zoom 100%%)."
 
     def on_resize(self, w, h):
-        """Nguoi dung keo gian cua so -> cap nhat kich thuoc & bo cuc."""
+        """User resized the window -> update size & layout."""
         self.win_w = max(MIN_W, w)
         self.win_h = max(MIN_H, h)
         if not self.fullscreen:
@@ -235,7 +235,7 @@ class Editor:
         fx, fy = self.screen_to_cellfrac(mx, my)
         i, j = int(fx), int(fy)
         rx, ry = fx - i, fy - j
-        # khoang cach toi 4 canh
+        # distance to the 4 edges
         dl, dr, dt, db = rx, 1 - rx, ry, 1 - ry
         m = min(dl, dr, dt, db)
         if m < EDGE_HIT:
@@ -249,12 +249,12 @@ class Editor:
         return ("cell", i, j)
 
     def hit_cell(self, mx, my):
-        """Luon tra ('cell', i, j) cho cong cu FLOOR."""
+        """Always return ('cell', i, j) for the FLOOR tool."""
         fx, fy = self.screen_to_cellfrac(mx, my)
         return ("cell", int(fx), int(fy))
 
     def nearest_edge(self, mx, my):
-        """Luon tra canh gan nhat ('vedge'|'hedge', i, j) cho cong cu WALL."""
+        """Always return the nearest edge ('vedge'|'hedge', i, j) for the WALL tool."""
         fx, fy = self.screen_to_cellfrac(mx, my)
         i, j = int(fx), int(fy)
         rx, ry = fx - i, fy - j
@@ -305,7 +305,7 @@ class Editor:
         d.pop((i, j), None)
 
     def fill_floor_rect(self, i0, j0, i1, j1):
-        """To san (state 1) cho toan bo o trong khung; khong ha cap den (state 2)."""
+        """Fill floor (state 1) over all cells in the box; do not downgrade lights (state 2)."""
         self._snapshot()
         lo_i, hi_i = sorted((i0, i1))
         lo_j, hi_j = sorted((j0, j1))
@@ -315,30 +315,30 @@ class Editor:
                 if self.cells.get((i, j), 0) == 0:
                     self.cells[(i, j)] = 1
                     n += 1
-        self.msg = "To san: them %d o." % n
+        self.msg = "Floor: added %d cells." % n
 
     def draw_wall_run(self, start_edge, mx, my):
-        """Ve doan tuong (state 1) tu canh bat dau toi vi tri chuot theo truc chinh."""
+        """Draw a wall run (state 1) from the start edge to the cursor along the main axis."""
         self._snapshot()
         kind, i0, j0 = start_edge
         end = self.nearest_edge(mx, my)
         d = self.vedges if kind == "vedge" else self.hedges
         n = 0
         if kind == "vedge":
-            # cot co dinh i0, chay theo j
+            # fixed column i0, run along j
             j1 = end[2] if end[0] == "vedge" else j0
             for j in range(min(j0, j1), max(j0, j1) + 1):
                 if 0 <= i0 <= self.nx and 0 <= j <= self.ny - 1 and d.get((i0, j), 0) == 0:
                     d[(i0, j)] = 1
                     n += 1
         else:
-            # hang co dinh j0, chay theo i
+            # fixed row j0, run along i
             i1 = end[1] if end[0] == "hedge" else i0
             for i in range(min(i0, i1), max(i0, i1) + 1):
                 if 0 <= i <= self.nx - 1 and 0 <= j0 <= self.ny and d.get((i, j0), 0) == 0:
                     d[(i, j0)] = 1
                     n += 1
-        self.msg = "Ve tuong: them %d doan." % n
+        self.msg = "Wall: added %d segments." % n
 
     def auto_walls(self):
         ve, he = sb.boundary_edges(self.cells)
@@ -351,22 +351,22 @@ class Editor:
             if self.hedges.get(e, 0) == 0:
                 self.hedges[e] = 1
                 added += 1
-        self.msg = "Auto-walls: them %d doan tuong bao." % added
+        self.msg = "Auto-walls: added %d boundary segments." % added
 
     def place_furniture(self, mx, my):
         if not self.palette:
-            self.msg = "Khong co prop noi that."
+            self.msg = "No furniture prop available."
             return
         self._snapshot()
         x, y = self.screen_to_usd(mx, my)
         x = round(x / SNAP) * SNAP
         y = round(y / SNAP) * SNAP
         name = self.palette[self.pal_sel][0]
-        sh = bev.default_shape(name)   # w/h/r do duoc; shape theo che do dat hien tai
+        sh = bev.default_shape(name)   # measured w/h/r; shape from current placement mode
         self.furniture.append({"asset": name, "x": x, "y": y, "yaw": self.cur_yaw,
                                "shape": self.place_shape,
                                "w": sh["w"], "h": sh["h"], "r": sh["r"]})
-        self.msg = "Dat %s (%s) @ (%.1f, %.1f)" % (name, self.place_shape, x, y)
+        self.msg = "Placed %s (%s) @ (%.1f, %.1f)" % (name, self.place_shape, x, y)
 
     def remove_nearest_furniture(self, mx, my):
         if not self.furniture:
@@ -379,10 +379,10 @@ class Editor:
                 bd, best = d, f
         if best is not None and bd < (1.5 ** 2):
             self.furniture.remove(best)
-            self.msg = "Da xoa %s" % best["asset"]
+            self.msg = "Deleted %s" % best["asset"]
 
     def find_furniture_at(self, mx, my):
-        """Tra ve index vat noi that gan (mx,my) nhat trong ban kinh footprint, hoac None."""
+        """Return the furniture index nearest (mx,my) within its footprint radius, or None."""
         if not self.furniture:
             return None
         x, y = self.screen_to_usd(mx, my)
@@ -399,12 +399,12 @@ class Editor:
         self.selected = idx
         self.active_field = None
         if idx is not None:
-            self._scroll_to_transform = True   # tu cuon panel toi o TRANSFORM
-            self.msg = "Da chon %s" % self.furniture[idx]["asset"]
+            self._scroll_to_transform = True   # auto-scroll panel to the TRANSFORM block
+            self.msg = "Selected %s" % self.furniture[idx]["asset"]
 
     def switch_tool(self, t):
         self.tool = t
-        self.panel_scroll = 0          # ve dau panel de thay cum nut cong cu
+        self.panel_scroll = 0          # back to top so the tool buttons show
 
     def deselect(self):
         self.panel_scroll = 0
@@ -414,10 +414,10 @@ class Editor:
     def open_ctx_menu(self, mx, my):
         idx = self.find_furniture_at(mx, my)
         if idx is not None:
-            items = [("select", "Chon"), ("duplicate", "Nhan ban"),
-                     ("rot90", "Xoay 90"), ("delete", "Xoa")]
+            items = [("select", "Select"), ("duplicate", "Duplicate"),
+                     ("rot90", "Rotate 90"), ("delete", "Delete")]
         else:
-            items = [("close", "Dong")]
+            items = [("close", "Close")]
         self.ctx_menu = {"pos": (mx, my), "target": idx, "items": items}
 
     def duplicate_furniture(self, idx):
@@ -427,7 +427,7 @@ class Editor:
         clone["x"] = src["x"] + SNAP
         self.furniture.append(clone)
         self.select_furniture(len(self.furniture) - 1)
-        self.msg = "Da nhan ban %s" % clone["asset"]
+        self.msg = "Duplicated %s" % clone["asset"]
 
     def rotate_furniture(self, idx, delta):
         self._snapshot()
@@ -442,7 +442,7 @@ class Editor:
             self.deselect()
         elif self.selected is not None and self.selected > idx:
             self.selected -= 1
-        self.msg = "Da xoa %s" % f["asset"]
+        self.msg = "Deleted %s" % f["asset"]
 
     def do_ctx_action(self, key):
         target = self.ctx_menu["target"] if self.ctx_menu else None
@@ -461,7 +461,7 @@ class Editor:
         if name == "yaw":
             return v % 360
         if name in ("w", "h", "r"):
-            return max(0.05, v)   # kich thuoc duong toi thieu
+            return max(0.05, v)   # minimum positive size
         return v
 
     def start_edit_field(self, name):
@@ -503,13 +503,13 @@ class Editor:
         f[name] = self._clamp_field(name, v)
 
     def set_shape(self, shape):
-        # dat lam dang mac dinh khi dat prop moi
+        # set as default for new props
         self.place_shape = shape
-        # neu dang chon 1 prop thi doi luon dang cua no
+        # if a prop is selected, also change its shape
         if self.selected is not None:
             self.furniture[self.selected]["shape"] = shape
             self.active_field = None
-        self.msg = "Dang dat: %s" % shape
+        self.msg = "Placing: %s" % shape
 
     # ---- data model io ----
     def map_data(self):
@@ -534,17 +534,17 @@ class Editor:
         self._recalc_layout()
 
     def cycle_structure(self, key):
-        """Xoay vong lua chon prop cau truc (wall/floor)."""
+        """Cycle the structural prop choice (wall/floor)."""
         choices = sb.STRUCTURE_CHOICES.get(key, [])
         if not choices:
             return
         cur = self.structure.get(key, choices[0])
         nxt = choices[(choices.index(cur) + 1) % len(choices)] if cur in choices else choices[0]
         self.structure[key] = nxt
-        self.msg = "Cau truc %s -> %s" % (key, nxt)
+        self.msg = "Structure %s -> %s" % (key, nxt)
 
     def save_map(self, name=None):
-        """Luu map. name=None + chua co ten -> auto-increment. name co gia tri -> dat ten/overwrite."""
+        """Save map. name=None + unnamed -> auto-increment; name given -> named/overwrite."""
         if not os.path.isdir(MAPS_DIR):
             os.makedirs(MAPS_DIR)
         if name:
@@ -560,20 +560,20 @@ class Editor:
         with open(p, "w", encoding="utf-8") as fh:
             json.dump(self.map_data(), fh, indent=2)
         self.current_map_name = filename
-        self.msg = "Da luu ban do: %s" % filename
+        self.msg = "Map saved: %s" % filename
 
     def list_maps(self):
-        """Tra ve danh sach map da luu, sap xep theo thoi gian moi nhat."""
+        """Return saved maps sorted most-recent first."""
         if not os.path.isdir(MAPS_DIR):
             return []
         files = sorted(glob.glob(os.path.join(MAPS_DIR, "*.json")), key=os.path.getmtime)
         return [os.path.basename(f) for f in files]
 
     def load_map_by_name(self, filename):
-        """Load map theo ten cu the."""
+        """Load a map by name."""
         path = os.path.join(MAPS_DIR, filename)
         if not os.path.isfile(path):
-            self.msg = "Khong thay ban do: %s" % filename
+            self.msg = "Map not found: %s" % filename
             return
         with open(path, encoding="utf-8") as fh:
             self.load_map_data(json.load(fh))
@@ -583,7 +583,7 @@ class Editor:
     def load_latest_map(self):
         files = sorted(glob.glob(os.path.join(MAPS_DIR, "*.json")), key=os.path.getmtime)
         if not files:
-            self.msg = "Khong co ban do da luu."
+            self.msg = "No saved map."
             return
         with open(files[-1], encoding="utf-8") as fh:
             self.load_map_data(json.load(fh))
@@ -591,69 +591,69 @@ class Editor:
         self.msg = "Da mo: %s" % self.current_map_name
 
     def validate_map(self):
-        """Kiem tra ban do va tra ve danh sach canh bao (list of str)."""
+        """Validate the map and return a list of warnings (list of str)."""
         warnings = []
         if not self.cells:
-            warnings.append("Khong co o san nao.")
+            warnings.append("No floor cells.")
         if not self.hedges and not self.vedges:
-            warnings.append("Khong co tuong nao.")
+            warnings.append("No walls.")
         for fi, f in enumerate(self.furniture):
             name = f.get("asset", "?")
             x, y = f.get("x", 0), f.get("y", 0)
             if not (-2.0 <= x <= (self.nx + 2) * CELL and -2.0 <= y <= (self.ny + 2) * CELL):
-                warnings.append("Noi that #%d (%s) nam ngoai luoi." % (fi + 1, name))
-        # kiem tra trung lap
+                warnings.append("Furniture #%d (%s) is outside the grid." % (fi + 1, name))
+        # check for overlaps
         pos_map = {}
         for fi, f in enumerate(self.furniture):
             key = (round(f.get("x", 0), 2), round(f.get("y", 0), 2))
             if key in pos_map:
                 name = f.get("asset", "?")
-                warnings.append("Noi that #%d (%s) trung vi tri voi #%d." % (fi + 1, name, pos_map[key] + 1))
+                warnings.append("Furniture #%d (%s) overlaps #%d." % (fi + 1, name, pos_map[key] + 1))
             pos_map[key] = fi
         return warnings
 
     def save_usd(self):
         warnings = self.validate_map()
         if not self.cells:
-            self.msg = "Chua co o san nao de xuat."
+            self.msg = "No floor cells to export."
             return
         if warnings:
-            self.msg = "Canh bao: " + " | ".join(warnings) + " — dang xuat..."
+            self.msg = "Warning: " + " | ".join(warnings) + " — exporting..."
         out = sb.next_scene_path()
         try:
             st = sb.build_scene(self.map_data(), out)
         except Exception as e:
-            self.msg = "Loi build: %s" % e
+            self.msg = "Build error: %s" % e
             return
-        self.msg = "Xuat %s | san %d, den %d, tuong %d, cua %d, noi that %d" % (
+        self.msg = "Exported %s | floor %d, light %d, wall %d, door %d, furniture %d" % (
             os.path.basename(out), st["floor"], st["light"], st["wall"], st["door"], st["furniture"])
 
     def export_bev(self):
         if not self.cells and not self.furniture:
-            self.msg = "Chua co gi de xuat BEV."
+            self.msg = "Nothing to export to BEV."
             return
         warnings = self.validate_map()
         if warnings:
-            self.msg = "Canh bao: " + " | ".join(warnings) + " — dang xuat BEV..."
+            self.msg = "Warning: " + " | ".join(warnings) + " — exporting BEV..."
         stem = os.path.splitext(os.path.basename(sb.next_scene_path()))[0]
         try:
             st = bev.export_scene(self.map_data(), stem=stem)
         except Exception as e:
-            self.msg = "Loi export BEV: %s" % e
+            self.msg = "BEV export error: %s" % e
             return
-        self.msg = "BEV -> output/bev/%s/ (csv,svg,png,pgm,yaml) | san %d, tuong %d, vat %d" % (
+        self.msg = "BEV -> output/bev/%s/ (csv,svg,png,pgm,yaml) | floor %d, wall %d, props %d" % (
             stem, st["floor"], st["wall"], st["prop"])
 
     def clear(self):
         self.cells.clear(); self.vedges.clear(); self.hedges.clear(); self.furniture.clear()
         self.deselect()
         self.ctx_menu = None
-        self.msg = "Da xoa toan bo ban do."
+        self.msg = "Cleared the whole map."
 
     def resize_grid(self, dnx, dny):
         self.nx = max(2, min(40, self.nx + dnx))
         self.ny = max(2, min(40, self.ny + dny))
-        # bo phan tu ngoai luoi
+        # drop elements outside the grid
         self.cells = {k: v for k, v in self.cells.items() if 0 <= k[0] < self.nx and 0 <= k[1] < self.ny}
         self.vedges = {k: v for k, v in self.vedges.items() if 0 <= k[0] <= self.nx and 0 <= k[1] < self.ny}
         self.hedges = {k: v for k, v in self.hedges.items() if 0 <= k[0] < self.nx and 0 <= k[1] <= self.ny}
@@ -661,12 +661,12 @@ class Editor:
 
     # ---- input ----
     def on_mouse_down(self, mx, my, button):
-        # nut con lan (button 2) -> keo tam nhin (pan) o bat ky dau
+        # middle button (2) -> pan the view anywhere
         if button == 2:
             self.panning = True
             self.pan_last = (mx, my)
             return
-        # menu chuot phai dang mo -> uu tien xu ly, nuot moi click
+        # a context menu is open -> handle it first, swallow the click
         if self.ctx_menu is not None:
             for i, (key, _label) in enumerate(self.ctx_menu["items"]):
                 rect = self._ctx_item_rect(i)
@@ -679,7 +679,7 @@ class Editor:
         if mx >= self.win_w - PANEL_W:
             self.panel_click(mx, my, button)
             return
-        # click ra khoi panel -> chot field dang sua (neu co)
+        # clicked outside the panel -> commit the field being edited (if any)
         self.commit_active_field()
         if not self.in_grid(mx, my):
             return
@@ -688,8 +688,8 @@ class Editor:
                 idx = self.find_furniture_at(mx, my)
                 if idx is not None:
                     self.select_furniture(idx)
-                    self._snapshot()                    # luu truoc khi keo
-                    self.move_drag = idx          # giu trai + keo -> di chuyen
+                    self._snapshot()                    # snapshot before dragging
+                    self.move_drag = idx          # hold left + drag -> move
                 else:
                     self.place_furniture(mx, my)
                     self.select_furniture(len(self.furniture) - 1)
@@ -697,7 +697,7 @@ class Editor:
             elif button == 3:
                 self.open_ctx_menu(mx, my)
             return
-        # FLOOR / WALL: nut trai bat dau keo; nut phai xoa don ngay
+        # FLOOR / WALL: left starts a drag; right clears a single cell/edge
         if self.tool == "floor":
             if button == 1:
                 self.drag_start = self.hit_cell(mx, my)
@@ -725,7 +725,7 @@ class Editor:
             f = self.furniture[self.move_drag]
             f["x"] = round(x / SNAP) * SNAP
             f["y"] = round(y / SNAP) * SNAP
-            self.msg = "Di chuyen %s @ (%.1f, %.1f)" % (f["asset"], f["x"], f["y"])
+            self.msg = "Moving %s @ (%.1f, %.1f)" % (f["asset"], f["x"], f["y"])
             return
         if self.drag_start is not None:
             self.drag_cur = (mx, my)
@@ -761,7 +761,7 @@ class Editor:
                 self.draw_wall_run((kind, i0, j0), mx, my)
 
     def panel_click(self, mx, my, button):
-        # field o panel Transform
+        # field in the Transform panel
         if self.selected is not None and self.tool == "furniture":
             for name, rect in self.field_rects.items():
                 if rect.collidepoint(mx, my):
@@ -778,7 +778,7 @@ class Editor:
             if rect.collidepoint(mx, my):
                 self.pal_sel = idx
                 self.tool = "furniture"
-                self.msg = "Chon: %s" % self.palette[idx][0]
+                self.msg = "Picked: %s" % self.palette[idx][0]
                 return
         # category tabs
         if hasattr(self, '_pal_cat_rects'):
@@ -824,7 +824,7 @@ class Editor:
     def on_key(self, ev):
         mods = pygame.key.get_mods()
         k = ev.key
-        # dang go so trong field cua panel Transform
+        # typing a number into a Transform field
         if self.active_field is not None:
             if k == pygame.K_RETURN or k == pygame.K_KP_ENTER:
                 self.commit_active_field()
@@ -843,7 +843,7 @@ class Editor:
             elif pygame.K_KP0 <= k <= pygame.K_KP9:
                 self.field_buffer += chr(ord('0') + (k - pygame.K_KP0))
             return
-        # dang nhap search filter
+        # entering search text filter
         if getattr(self, '_pal_search_active', False):
             if k == pygame.K_ESCAPE:
                 self._pal_search_active = False
@@ -891,7 +891,7 @@ class Editor:
     def on_wheel(self, dy, ctrl=False):
         mx, my = pygame.mouse.get_pos()
         over_panel = mx >= self.win_w - PANEL_W
-        # Ctrl + lan chuot -> zoom quanh con tro
+        # Ctrl + wheel -> zoom around cursor
         if ctrl and not over_panel:
             self.zoom_at(mx, my, 1.15 if dy > 0 else 1.0 / 1.15)
             return
@@ -899,7 +899,7 @@ class Editor:
             self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll - dy * 40))
         elif self.tool == "furniture":
             if self.selected is not None:
-                self.rotate_furniture(self.selected, dy * 5)   # xoay 5 do moi nac
+                self.rotate_furniture(self.selected, dy * 5)   # rotate 5 deg per notch
             else:
                 self.cur_yaw = (self.cur_yaw + dy * 5) % 360
 
@@ -932,7 +932,7 @@ class Editor:
             if (hover[1], hover[2]) not in self.cells:
                 r = self.cell_rect(hover[1], hover[2])
                 pygame.draw.rect(self.screen, FLOOR_HOVER, r, 2)
-        # preview keo-tha
+        # drag preview
         self.draw_drag_preview()
         # grid lines
         for i in range(self.nx + 1):
@@ -992,7 +992,7 @@ class Editor:
             return
         col = DOOR_COL if s == 2 else WALL_COL
         if s == 2:
-            # tuong co cua: chua khe o giua
+            # wall with door: gap in the middle
             mxp = ((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2)
             a = (p0[0] * 0.7 + p1[0] * 0.3, p0[1] * 0.7 + p1[1] * 0.3)
             b = (p0[0] * 0.3 + p1[0] * 0.7, p0[1] * 0.3 + p1[1] * 0.7)
@@ -1003,10 +1003,10 @@ class Editor:
             pygame.draw.line(self.screen, col, p0, p1, w)
 
     def _get_mesh_surface(self, asset):
-        """Surface mask footprint tu mesh_shapes/<asset>.png (cache).
+        """Footprint mask surface from mesh_shapes/<asset>.png (cached).
 
-        Tra (mask_surface, w_m, h_m) - mask trang doi tuong / trong suot nen -
-        hoac None neu chua co mesh. Mask da crop khit doi tuong.
+        Returns (mask_surface, w_m, h_m) - white object / transparent background -
+        or None if there is no mesh. The mask is cropped tight to the object.
         """
         if asset in self._mesh_cache:
             return self._mesh_cache[asset]
@@ -1024,9 +1024,9 @@ class Editor:
                     obj = a[y0:y1, x0:x1] < 128
                     ch, cw = obj.shape
                     rgba = np.zeros((ch, cw, 4), dtype=np.uint8)
-                    rgba[obj] = (255, 255, 255, 255)   # trang, se to mau khi ve
+                    rgba[obj] = (255, 255, 255, 255)   # white, tinted at draw time
                     surf = pygame.image.frombuffer(rgba.tobytes(), (cw, ch), "RGBA").convert_alpha()
-                    scl = min(1.0, 160.0 / max(ch, cw))   # thu nho cho nhe
+                    scl = min(1.0, 160.0 / max(ch, cw))   # downscale to keep it light
                     if scl < 1.0:
                         surf = pygame.transform.smoothscale(surf, (max(1, int(cw * scl)), max(1, int(ch * scl))))
                     mpp = sb.CELL / float(im.width)
@@ -1037,7 +1037,7 @@ class Editor:
         return result
 
     def _rot_rect_pts(self, cx, cy, wpx, hpx, yaw_deg):
-        """4 goc chu nhat (tam cx,cy) xoay yaw_deg trong khong gian man hinh (y xuong)."""
+        """4 corners of a rectangle (center cx,cy) rotated by yaw_deg in screen space (y-down)."""
         return bbox_corners(cx, cy, wpx, hpx, yaw_deg)
 
     def draw_furni(self, f, selected=False):
@@ -1049,7 +1049,7 @@ class Editor:
         if shape == "mesh":
             mesh = self._get_mesh_surface(f["asset"])
             if mesh is None:
-                # chua co du lieu mesh -> danh dau bang dau '?' mau do
+                # no mesh data -> mark with a red "?"
                 if selected:
                     rpx = max(8, int(0.45 / sb.CELL * self.cs))
                     pygame.draw.circle(self.screen, ACCENT, (int(sx), int(sy)), rpx + 4, 2)
@@ -1061,7 +1061,7 @@ class Editor:
             th = max(2, int(h_m / sb.CELL * self.cs))
             surf = pygame.transform.smoothscale(mask, (tw, th))
             surf = surf.copy()
-            surf.fill(fill + (255,), special_flags=pygame.BLEND_RGBA_MULT)  # to mau theo trang thai
+            surf.fill(fill + (255,), special_flags=pygame.BLEND_RGBA_MULT)  # tint by state
             surf = pygame.transform.rotate(surf, -yaw)                       # yaw: y-xuong -> quay am
             rect = surf.get_rect(center=(int(sx), int(sy)))
             if selected:
@@ -1081,7 +1081,7 @@ class Editor:
             pygame.draw.line(self.screen, ACCENT if selected else BG, (sx, sy), (ex, ey), 2)
             return
 
-        # bbox (mac dinh): chu nhat w x h xoay theo yaw
+        # bbox (default): w x h rectangle rotated by yaw
         wpx = max(4, int(f.get("w", 0.8) / sb.CELL * self.cs))
         hpx = max(4, int(f.get("h", 0.8) / sb.CELL * self.cs))
         if selected:
@@ -1097,13 +1097,13 @@ class Editor:
         wall = self.structure.get("wall", sb.STRUCTURE_CHOICES["wall"][0])
         floor = self.structure.get("floor", sb.STRUCTURE_CHOICES["floor"][0])
         return [
-            ("CONG CU", [("floor", "1 Floor"), ("wall", "2 Wall"), ("furni", "3 Furniture")]),
+            ("TOOLS", [("floor", "1 Floor"), ("wall", "2 Wall"), ("furni", "3 Furniture")]),
             ("HOA TAC", [("undo", "Undo (Ctrl+Z)"), ("redo", "Redo (Ctrl+Y)")]),
-            ("LUOI", [("walls", "Auto-walls (W)"), ("clear", "Clear (C)"),
+            ("GRID", [("walls", "Auto-walls (W)"), ("clear", "Clear (C)"),
                       ("gx-", "X -"), ("gx+", "X +"), ("gy-", "Y -"), ("gy+", "Y +")]),
-            ("CAU TRUC (prop 3D)", [("cyc_wall", "Wall: " + wall.replace("SM_", "")),
+            ("STRUCTURE (3D)", [("cyc_wall", "Wall: " + wall.replace("SM_", "")),
                                     ("cyc_floor", "Floor: " + floor.replace("SM_", ""))]),
-            ("TEP", [("usd", "SAVE .usd (S)"), ("export", "Export BEV (B)"),
+            ("FILE", [("usd", "SAVE .usd (S)"), ("export", "Export BEV (B)"),
                      ("savemap", "Save map (Ctrl+S)"), ("load", "Load map (L)")]),
         ]
 
@@ -1117,9 +1117,9 @@ class Editor:
         self._pal_rects = []
 
         avail_h = self.win_h - STATUS_H
-        # kep truoc khi ve (dung gioi han frame truoc) de tranh nhay khi resize
+        # clamp before drawing (use previous frame limit) to avoid jitter on resize
         self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
-        # clip vung panel (khong ke status bar) -> noi dung cuon khong tran ra ngoai
+        # clip the panel area (excluding status bar) so scrolled content stays inside
         self.screen.set_clip(pygame.Rect(px, 0, PANEL_W, avail_h))
         y = 16 - self.panel_scroll
 
@@ -1149,10 +1149,10 @@ class Editor:
             pygame.draw.line(self.screen, SECTION_LINE, (px + 16, y - 2), (px + PANEL_W - 16, y - 2))
             y += 6
 
-        # transform inspector (chi hien khi dang chon 1 vat noi that)
+        # transform inspector (only when a furniture is selected)
         if self.selected is not None and self.tool == "furniture" and 0 <= self.selected < len(self.furniture):
             if self._scroll_to_transform:
-                # dua o TRANSFORM len gan dau vung nhin (ap dung tu frame sau)
+                # bring the TRANSFORM block near the top of view (applied next frame)
                 tf_top_abs = y + self.panel_scroll
                 self.panel_scroll = max(0, tf_top_abs - 56)
                 self._scroll_to_transform = False
@@ -1161,12 +1161,12 @@ class Editor:
             self.field_rects = {}
             self._scroll_to_transform = False
 
-        # palette (danh sach noi that) - filter theo category + search
+        # palette (furniture list) - filtered by category + search
         self._pal_cat_rects = []
-        self.screen.blit(self.font.render("Noi that:", True, TEXT_DIM), (px + 16, y)); y += 22
+        self.screen.blit(self.font.render("Furniture:", True, TEXT_DIM), (px + 16, y)); y += 22
 
         # category tabs
-        categories = ["Tat ca"] + list(FURNITURE_CATEGORIES.keys())
+        categories = ["All"] + list(FURNITURE_CATEGORIES.keys())
         tab_x = px + 16
         for cat_name in categories:
             active = (cat_name == self._pal_cat)
@@ -1184,7 +1184,7 @@ class Editor:
         y += 24
 
         # search field
-        search_label = self._pal_filter if self._pal_filter else "Tim kiem..."
+        search_label = self._pal_filter if self._pal_filter else "Search..."
         search_bg = FIELD_ACTIVE_BG if getattr(self, '_pal_search_active', False) else FIELD_BG
         self._pal_search_rect = pygame.Rect(px + 16, y, PANEL_W - 32, 22)
         pygame.draw.rect(self.screen, search_bg, self._pal_search_rect, border_radius=4)
@@ -1221,7 +1221,7 @@ class Editor:
         self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
         self.screen.set_clip(None)
 
-        # thanh cuon (chi khi noi dung tran)
+        # scrollbar (only when content overflows)
         if self._panel_max_scroll > 0:
             bar_h = max(30, int(avail_h * avail_h / float(content_h)))
             bar_y = int((avail_h - bar_h) * self.panel_scroll / self._panel_max_scroll)
@@ -1235,7 +1235,7 @@ class Editor:
         self.screen.blit(self.font_s.render(f["asset"], True, TEXT_DIM), (px + 16, y)); y += 22
 
         self.field_rects = {}
-        for name, label in (("x", "X (m)"), ("y", "Y (m)"), ("yaw", "Yaw (do)")):
+        for name, label in (("x", "X (m)"), ("y", "Y (m)"), ("yaw", "Yaw (deg)")):
             y = self._draw_field_row(px, y, name, label, f.get(name, 0.0), mx, my)
         y += 4
 
@@ -1253,15 +1253,15 @@ class Editor:
         elif shape == "sphere":
             y = self._draw_field_row(px, y, "r", "R (m)", f.get("r", 0.4), mx, my)
         else:  # mesh
-            self.screen.blit(self.font_s.render("Mesh: (chua co du lieu)", True, TEXT_DIM),
+            self.screen.blit(self.font_s.render("Mesh: (no data yet)", True, TEXT_DIM),
                              (px + 16, y + 2)); y += 22
         y += 6
 
         bw2 = (PANEL_W - 32 - 12) // 2
         dup_rect = pygame.Rect(px + 16, y, bw2, 26)
         del_rect = pygame.Rect(px + 16 + bw2 + 12, y, bw2, 26)
-        self._draw_button(dup_rect, "tf_dup", "Nhan ban", mx, my)
-        self._draw_button(del_rect, "tf_del", "Xoa", mx, my, danger=True)
+        self._draw_button(dup_rect, "tf_dup", "Duplicate", mx, my)
+        self._draw_button(del_rect, "tf_del", "Delete", mx, my, danger=True)
         y += 34
         pygame.draw.line(self.screen, SECTION_LINE, (px + 16, y - 2), (px + PANEL_W - 16, y - 2))
         y += 8
@@ -1308,7 +1308,7 @@ class Editor:
         active = tool_of.get(key) == self.tool
         hover = rect.collidepoint(mx, my)
         if danger:
-            # nut Xoa: nen toi (C0) de phan biet, sang len khi hover
+            # Delete button: dark ground (C0) to stand out, brightens on hover
             col = C1 if hover else C0
         else:
             col = BTN_ACTIVE if active else (BTN_HOVER if hover else BTN)
@@ -1326,7 +1326,7 @@ class Editor:
         badge_rect = pygame.Rect(12, y + 6, badge_surf.get_width() + 16, 20)
         pygame.draw.rect(self.screen, badge_col, badge_rect, border_radius=4)
         self.screen.blit(badge_surf, (badge_rect.x + 8, badge_rect.y + 3))
-        info = "Luoi:%dx%d  san:%d den:%d vat:%d  dat:%s  yaw:%d  zoom:%d%%  -> %s" % (
+        info = "Grid:%dx%d  floor:%d light:%d props:%d  place:%s  yaw:%d  zoom:%d%%  -> %s" % (
             self.nx, self.ny,
             len(self.cells), sum(1 for v in self.cells.values() if v == 2),
             len(self.furniture), self.place_shape.upper(), int(self.cur_yaw),

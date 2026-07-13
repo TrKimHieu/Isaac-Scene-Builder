@@ -1,21 +1,21 @@
 """
-bev_export.py - Xuat BEV (Bird's Eye View) tu map_data: CSV + SVG (vector) + raster (PNG/PGM/YAML).
+bev_export.py - Export BEV (Bird's Eye View) from map_data: CSV + SVG (vector) + raster (PNG/PGM/YAML).
 
-KHONG phu thuoc pygame. Dung Pillow cho raster (PNG/PGM), text thuan cho SVG/CSV.
-Tai su dung scene_builder cho FURNITURE / CELL / parse_map.
+No pygame dependency. Uses Pillow for raster (PNG/PGM), plain text for SVG/CSV.
+Reuses scene_builder for FURNITURE / CELL / parse_map.
 
-Quy uoc mau xam 3 muc (ROS map_server):
-    205 = ngoai / chua biet (unknown)
-    254 = san trong, di duoc (free)
-      0 = chiem dung: tuong + vat the (occupied)
+Three-level grayscale convention (ROS map_server):
+    205 = outside / unknown
+    254 = free floor, walkable (free)
+      0 = occupied: walls + objects (occupied)
 
-Shape cua moi prop co 3 dang:
-    bbox   -> hinh chu nhat w x h (m), xoay theo yaw
-    sphere -> hinh tron ban kinh r (m)
-    mesh   -> hinh chieu bang that (chua co du lieu; fallback ve bbox)
+Each prop has one of 3 shapes:
+    bbox   -> w x h rectangle (m), rotated by yaw
+    sphere -> circle of radius r (m)
+    mesh   -> real top-down footprint (falls back to bbox if missing)
 
-map_data schema: xem scene_builder.py. Moi phan tu furniture co the co them
-key tuy chon: "shape" ("bbox"|"sphere"|"mesh"), "w", "h", "r".
+map_data schema: see scene_builder.py. Each furniture item may also carry
+optional keys: "shape" ("bbox"|"sphere"|"mesh"), "w", "h", "r".
 """
 import os
 import csv
@@ -46,7 +46,7 @@ def _bbox_corners(cx, cy, w, h, yaw_deg):
 # Shape helpers
 # ----------------------------------------------------------------------------
 def save_prop_shape(asset, shape, w, h, r, mesh=None):
-    """Ghi/ cap nhat thong so shape cua 1 asset vao props_shapes.json."""
+    """Write/update the shape parameters of one asset in props_shapes.json."""
     shapes_dir = os.path.dirname(os.path.abspath(SHAPES_JSON))
     if not os.path.isdir(shapes_dir):
         os.makedirs(shapes_dir)
@@ -62,10 +62,10 @@ def save_prop_shape(asset, shape, w, h, r, mesh=None):
 
 
 def default_shape(asset):
-    """Shape mac dinh cho 1 asset.
+    """Default shape for one asset.
 
-    Uu tien thong so do bang tay trong props_shapes.json; neu chua co thi dung
-    bounding box vuong = 2 x ban kinh footprint tu bang FURNITURE.
+    Prefer manually-measured values in props_shapes.json; otherwise use a
+    square bounding box = 2 x footprint radius from the FURNITURE table.
     """
     m = load_prop_shapes().get(asset)
     if m:
@@ -78,7 +78,7 @@ def default_shape(asset):
 
 
 def norm_furni(f):
-    """Tra ve dict furniture da dien day du shape (giu gia tri co san neu co)."""
+    """Return a furniture dict with all shape fields filled (keep existing values)."""
     out = default_shape(f.get("asset", ""))
     out.update({"asset": f.get("asset", ""), "x": float(f.get("x", 0.0)),
                 "y": float(f.get("y", 0.0)), "yaw": float(f.get("yaw", 0.0))})
@@ -89,13 +89,13 @@ def norm_furni(f):
 
 
 # ----------------------------------------------------------------------------
-# Scene -> danh sach dong (dung chung cho CSV/SVG/raster)
+# Scene -> list of rows (shared by CSV/SVG/raster)
 # ----------------------------------------------------------------------------
 ROW_FIELDS = ["kind", "name", "x", "y", "yaw", "shape", "w", "h", "r", "x2", "y2"]
 
 
 def scene_rows(map_data):
-    """Tra ve list dict (theo ROW_FIELDS) mo ta toan bo scene o toa do met."""
+    """Return a list of dicts (per ROW_FIELDS) describing the whole scene in meters."""
     nx, ny, cells, vedges, hedges, furniture = sb.parse_map(map_data)
     rows = []
 
@@ -104,7 +104,7 @@ def scene_rows(map_data):
         r.update(kw)
         rows.append(r)
 
-    # San + den
+    # Floor + light
     for (i, j), s in sorted(cells.items()):
         if s < 1:
             continue
@@ -113,7 +113,7 @@ def scene_rows(map_data):
         if s == 2:
             row(kind="light", x=cx, y=cy)
 
-    # Tuong doc (vedge)
+    # Vertical walls (vedge)
     for (i, j), s in sorted(vedges.items()):
         if s == 0:
             continue
@@ -121,7 +121,7 @@ def scene_rows(map_data):
         row(kind=("door" if s == 2 else "wall"),
             x=x, y=j * CELL, x2=x, y2=(j + 1) * CELL)
 
-    # Tuong ngang (hedge)
+    # Horizontal walls (hedge)
     for (i, j), s in sorted(hedges.items()):
         if s == 0:
             continue
@@ -129,7 +129,7 @@ def scene_rows(map_data):
         row(kind=("door" if s == 2 else "wall"),
             x=i * CELL, y=y, x2=(i + 1) * CELL, y2=y)
 
-    # Noi that
+    # Furniture
     for f in furniture:
         nf = norm_furni(f)
         row(kind="prop", name=nf["asset"], x=nf["x"], y=nf["y"], yaw=nf["yaw"],
@@ -152,10 +152,10 @@ def write_csv(map_data, path):
 
 
 # ----------------------------------------------------------------------------
-# Hinh hoc dung chung
+# Shared geometry
 # ----------------------------------------------------------------------------
 def _door_segments(x0, y0, x1, y1):
-    """Chia doan tuong-cua thanh 2 doan dac (chua khe di qua o giua)."""
+    """Split a wall-door segment into 2 solid parts (with a gap in the middle)."""
     f0, f1 = DOOR_GAP
     ax, ay = x0 + (x1 - x0) * f0, y0 + (y1 - y0) * f0
     bx, by = x0 + (x1 - x0) * f1, y0 + (y1 - y0) * f1
@@ -227,7 +227,7 @@ def write_svg(map_data, path, scale=BEV_SCALE, margin_m=WALL_M):
 # ----------------------------------------------------------------------------
 def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M):
     if Image is None:
-        raise RuntimeError("Pillow (PIL) chua duoc cai - khong the xuat raster.")
+        raise RuntimeError("Pillow (PIL) is not installed - cannot export raster.")
     nx, ny, rows = scene_rows(map_data)
     m = int(round(margin_m * scale))
     W = int(nx * CELL * scale) + 2 * m
@@ -281,7 +281,7 @@ def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M):
 
 
 def _mesh_stamp(name, img, px, py, yaw, scale):
-    """Dan footprint that (mesh_shapes/<name>.png) vao img tai (px,py)."""
+    """Stamp the real footprint (mesh_shapes/<name>.png) onto img at (px,py)."""
     if not name:
         return False
     p = os.path.join(MESH_DIR, name + ".png")
@@ -303,7 +303,7 @@ def _write_yaml(path, image_name, resolution, margin_px, ny, scale):
     origin_x = -margin_px / scale
     origin_y = -(ny * CELL) - margin_px / scale
     txt = (
-        "# BEV map cho ROS map_server. Anh top-down khop huong editor (y huong xuong).\n"
+        "# BEV map for ROS map_server. Top-down image matches editor orientation (y-down).\n"
         "image: %s\n"
         "resolution: %.6f\n"
         "origin: [%.4f, %.4f, 0.0]\n"
@@ -319,9 +319,9 @@ def _write_yaml(path, image_name, resolution, margin_px, ny, scale):
 # Export tong hop
 # ----------------------------------------------------------------------------
 def export_scene(map_data, stem="scene", scale=BEV_SCALE):
-    """Xuat CSV + SVG + PNG/PGM/YAML cua 1 scene vao rieng output/bev/<stem>/.
+    """Export CSV + SVG + PNG/PGM/YAML of one scene into its own output/bev/<stem>/.
 
-    Moi scene co 1 thu muc rieng chua day du {stem}.csv/.svg/.png/.pgm/.yaml.
+    Each scene gets its own folder with the full {stem}.csv/.svg/.png/.pgm/.yaml.
     """
     if not os.path.isdir(MESH_DIR):
         os.makedirs(MESH_DIR)
@@ -359,4 +359,4 @@ if __name__ == "__main__":
             md = json.load(fh)
         print(export_scene(md, stem="bev_demo"))
     else:
-        print("Khong co map de demo.")
+        print("No map to demo.")

@@ -1,15 +1,15 @@
 """
-scene_builder.py - Loi build USD tu map_data (KHONG phu thuoc pygame).
+scene_builder.py - Core USD builder from map_data (no pygame dependency).
 
-Dung chung cho scene_editor.py (GUI) va test headless.
-Sinh Scene .usd tham chieu props trong assets/office/Props/, Z-up, 1 unit = 1 met.
+Shared by scene_editor.py (GUI) and headless tests.
+Generate a Scene .usd referencing props in assets/office/Props/, Z-up, 1 unit = 1 m.
 
-map_data schema (xem plan):
+map_data schema (see plan):
 {
   "grid":   [nx, ny],
-  "cells":  {"i,j": 0|1|2},          # 0 rong | 1 san | 2 san+den
-  "vedges": {"i,j": 0|1|2},          # canh DOC tai X=i*3, Y[j*3..(j+1)*3]; 0 none|1 wall|2 door
-  "hedges": {"i,j": 0|1|2},          # canh NGANG tai Y=j*3, X[i*3..(i+1)*3]
+  "cells":  {"i,j": 0|1|2},          # 0 empty | 1 floor | 2 floor+light
+  "vedges": {"i,j": 0|1|2},          # VERTICAL edge at X=i*3, Y[j*3..(j+1)*3]; 0 none|1 wall|2 door
+  "hedges": {"i,j": 0|1|2},          # HORIZONTAL edge at Y=j*3, X[i*3..(i+1)*3]
   "furniture": [{"asset","x","y","yaw"}]
 }
 """
@@ -37,7 +37,7 @@ _load_prop_shapes = load_prop_shapes
 # Asset helpers
 # ----------------------------------------------------------------------------
 def _asset_dir(name):
-    """Tra duong dan tuyet doi thu muc chua <name>.usd, hoac None neu khong thay."""
+    """Return the (relative) dir containing <name>.usd, or None if not found."""
     for d in PROP_DIRS:
         if os.path.isfile(os.path.join(d, name + ".usd")):
             return d
@@ -49,13 +49,13 @@ def asset_exists(name):
 
 
 def asset_abs(name):
-    """Duong dan tuyet doi toi prop (hoac None)."""
+    """Absolute path to the prop (or None)."""
     d = _asset_dir(name)
     return os.path.join(d, name + ".usd") if d else None
 
 
 def asset_path(name):
-    """Duong dan tuong doi tu file Scene toi prop (portable), dung dung thu muc."""
+    """Relative path from the Scene file to the prop (portable), using the right dir."""
     d = _asset_dir(name)
     if d:
         rel = os.path.relpath(d, PROJECT_ROOT).replace("\\", "/")
@@ -64,10 +64,10 @@ def asset_path(name):
 
 
 def _extra_furniture():
-    """Furniture ngoai danh sach curated:
-      (a) moi asset da do shape trong props_shapes.json (bat ky thu muc), va
+    """Furniture outside the curated list:
+      (a) any asset already measured in props_shapes.json (any dir), and
       (b) moi *.usd trong assets/extra/.
-    Ban kinh: props_shapes.json[name].r -> mac dinh 0.5.
+    Radius: props_shapes.json[name].r -> default 0.5.
     """
     known = {n for n, _ in FURNITURE}
     shapes = load_prop_shapes()
@@ -79,9 +79,9 @@ def _extra_furniture():
         seen.add(n)
         out.append((n, float(shapes.get(n, {}).get("r", 0.5))))
 
-    for n in sorted(shapes.keys()):             # (a) da dang ky qua props_shapes.json
+    for n in sorted(shapes.keys()):             # (a) registered via props_shapes.json
         add(n)
-    for d in PROP_DIRS[1:]:                      # (b) tha vao assets/extra/
+    for d in PROP_DIRS[1:]:                      # (b) dropped into assets/extra/
         if os.path.isdir(d):
             for f in sorted(glob.glob(os.path.join(d, "*.usd"))):
                 add(os.path.splitext(os.path.basename(f))[0])
@@ -89,7 +89,7 @@ def _extra_furniture():
 
 
 def available_furniture():
-    """Palette = curated (ton tai) + prop da dang ky (props_shapes.json) + assets/extra/."""
+    """Palette = curated (existing) + registered props (props_shapes.json) + assets/extra/."""
     base = [(n, r) for (n, r) in FURNITURE if asset_exists(n)]
     return base + _extra_furniture()
 
@@ -100,7 +100,7 @@ def check_required():
 
 
 def next_scene_path(directory=None, stem="scene"):
-    """Tra ve duong dan sceneX.usd voi X tang dan (X nho nhat chua dung)."""
+    """Return path sceneX.usd with increasing X (smallest unused X)."""
     if directory is None:
         directory = SCENES_DIR
     pat = re.compile(r"^%s(\d+)\.usd$" % re.escape(stem), re.IGNORECASE)
@@ -130,7 +130,7 @@ def parse_map(m):
 
 
 def boundary_edges(cells):
-    """Tinh cac canh bien cua tap o san (mot ben la san, ben kia khong).
+    """Compute boundary edges of the floor set (floor on one side, not the other).
 
     cells: dict (i,j)->state. Tra ve (set_vedges, set_hedges).
     - vedge (i,j): giua o trai (i-1,j) va o phai (i,j)
@@ -139,12 +139,12 @@ def boundary_edges(cells):
     floor = {ij for ij, s in cells.items() if s >= 1}
     ve, he = set(), set()
     for (i, j) in floor:
-        for vi in (i, i + 1):                       # canh trai & phai cua o
+        for vi in (i, i + 1):                       # left & right edges of the cell
             left = (vi - 1, j) in floor
             right = (vi, j) in floor
             if left != right:
                 ve.add((vi, j))
-        for hj in (j, j + 1):                        # canh duoi & tren cua o
+        for hj in (j, j + 1):                        # bottom & top edges of the cell
             below = (i, hj - 1) in floor
             above = (i, hj) in floor
             if below != above:
@@ -153,15 +153,15 @@ def boundary_edges(cells):
 
 
 # ----------------------------------------------------------------------------
-# Can chinh prop cau truc (theo bbox that -> tu thich ung khi doi prop)
+# Align structural props (from real bbox -> adapts when props are swapped)
 # ----------------------------------------------------------------------------
 _BBOX_CACHE = {}
 _MPU_CACHE = {}
 
 
 def asset_mpu(name):
-    """metersPerUnit cua prop (cache). Prop cm (0.01) can scale khi reference vao
-    stage met. Prop Office bake san scale nen mpu=1.0."""
+    """metersPerUnit of the prop (cached). cm props (0.01) need scaling when referenced into
+    a meter stage. Office props bake the scale so mpu=1.0."""
     if name in _MPU_CACHE:
         return _MPU_CACHE[name]
     v = 1.0
@@ -177,7 +177,7 @@ def asset_mpu(name):
 
 
 def _prop_bbox(name):
-    """(min, max) bbox the gioi cua prop (Gf.Vec3), cache. None neu loi."""
+    """(min, max) world bbox of the prop (Gf.Vec3), cached. None on error."""
     if name in _BBOX_CACHE:
         return _BBOX_CACHE[name]
     res = None
@@ -197,9 +197,9 @@ def _prop_bbox(name):
 
 
 def _wall_align(name):
-    """(cx, ymin): tam-do-day theo X va diem dau chieu dai theo Y cua prop tuong.
+    """(cx, ymin): thickness center along X and the length-start along Y of a wall prop.
 
-    Fallback (0.106, 0.0) khop SM_Wall_3m khi khong doc duoc bbox.
+    Fallback (0.106, 0.0) matches SM_Wall_3m when the bbox cannot be read.
     """
     bb = _prop_bbox(name)
     if not bb:
@@ -209,7 +209,7 @@ def _wall_align(name):
 
 
 def _tile_align(name):
-    """(xmin, ymin): goc cua tile san/tran (thuong (0,0))."""
+    """(xmin, ymin): corner of the floor/ceiling tile (usually (0,0))."""
     bb = _prop_bbox(name)
     if not bb:
         return 0.0, 0.0
@@ -220,10 +220,10 @@ def _tile_align(name):
 # Dat prim
 # ----------------------------------------------------------------------------
 def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0):
-    """Xform mang transform, ben trong /Geo reference toi prop.
+    """Xform holding the transform, with /Geo referencing the prop.
 
-    Tu chuan hoa don vi: nhan scale voi metersPerUnit cua prop (prop cm -> 0.01)
-    de moi prop hien dung kich thuoc met trong stage met.
+    Auto unit-normalize: multiply scale by the prop metersPerUnit (cm props -> 0.01)
+    so every prop shows at true meter size in a meter stage.
     """
     xf = UsdGeom.Xform.Define(stage, path)
     xf.AddTranslateOp().Set(Gf.Vec3d(*translate))
@@ -238,7 +238,7 @@ def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0):
 
 
 def add_light(stage, base_path, cx, cy, light_mesh=None):
-    """Vo den (mesh) + nguon sang SphereLight 'da bat' tai tam o."""
+    """Light fixture (mesh) + an already-on SphereLight source at the cell center."""
     if light_mesh is None:
         light_mesh = LIGHT_MESH
     place(stage, base_path + "_Fixture", light_mesh, (cx, cy, WALL_H - 0.02))
@@ -289,7 +289,7 @@ def build_scene(map_data, out_path):
     wcx, wym = _wall_align(wall_p)
     dcx, dym = _wall_align(door_p)
 
-    # San + tran (+ den)
+    # Floor + ceiling (+ light)
     for (i, j), s in sorted(cells.items()):
         if s < 1:
             continue
@@ -304,7 +304,7 @@ def build_scene(map_data, out_path):
             add_light(stage, "/World/Lights/Lamp_%d_%d" % (i, j), cx, cy, light_p)
             stats["light"] += 1
 
-    # Tuong doc (vedge)
+    # Vertical walls (vedge)
     for (i, j), s in sorted(vedges.items()):
         if s == 0:
             continue
@@ -313,7 +313,7 @@ def build_scene(map_data, out_path):
               (i * CELL - cx, j * CELL - ym, 0.0), rot_z=0)
         stats["door" if s == 2 else "wall"] += 1
 
-    # Tuong ngang (hedge)
+    # Horizontal walls (hedge)
     for (i, j), s in sorted(hedges.items()):
         if s == 0:
             continue
@@ -322,7 +322,7 @@ def build_scene(map_data, out_path):
               (i * CELL - ym, j * CELL + cx, 0.0), rot_z=-90)
         stats["door" if s == 2 else "wall"] += 1
 
-    # Noi that
+    # Furniture
     for idx, f in enumerate(furniture):
         name = f["asset"]
         if not asset_exists(name):
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     for i in range(3):
         for j in range(2):
             cells[(i, j)] = 1
-    cells[(1, 0)] = 2  # den
+    cells[(1, 0)] = 2  # light
     ve, he = boundary_edges(cells)
     vedges = {e: 1 for e in ve}
     hedges = {e: 1 for e in he}

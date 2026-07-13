@@ -45,7 +45,7 @@ class TestValidateMap:
         e.ny = 4
         warnings = e.validate_map()
         assert len(warnings) > 0
-        assert any("san" in w.lower() for w in warnings)
+        assert any("floor" in w.lower() for w in warnings)
 
     def test_validate_out_of_bounds_furniture(self):
         from scene_editor import Editor
@@ -57,7 +57,7 @@ class TestValidateMap:
         e.nx = 4
         e.ny = 4
         warnings = e.validate_map()
-        assert any("ngoai luoi" in w for w in warnings)
+        assert any("outside the grid" in w for w in warnings)
 
 
 class TestFilteredPalette:
@@ -65,7 +65,7 @@ class TestFilteredPalette:
         from scene_editor import Editor
         e = Editor.__new__(Editor)
         e.palette = [("SM_Chair", 0.5), ("SM_Sofa", 1.1), ("SM_Printer", 0.4)]
-        e._pal_cat = "Tat ca"
+        e._pal_cat = "All"
         e._pal_filter = ""
         fp = e.filtered_palette()
         assert len(fp) == 3
@@ -74,7 +74,7 @@ class TestFilteredPalette:
         from scene_editor import Editor
         e = Editor.__new__(Editor)
         e.palette = [("SM_Chair", 0.5), ("SM_Sofa", 1.1), ("SM_Printer", 0.4)]
-        e._pal_cat = "Tat ca"
+        e._pal_cat = "All"
         e._pal_filter = "chair"
         fp = e.filtered_palette()
         assert len(fp) == 1
@@ -102,7 +102,7 @@ class TestFilteredPalette:
         from scene_editor import Editor
         e = Editor.__new__(Editor)
         e.palette = [("SM_Chair", 0.5), ("SM_Sofa", 1.1), ("SM_Printer", 0.4)]
-        e._pal_cat = "Tat ca"
+        e._pal_cat = "All"
         e._pal_filter = "sofa"
         fp = e.filtered_palette()
         assert len(fp) == 1

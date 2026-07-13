@@ -1,13 +1,13 @@
 """
-shape_tools.py - Logic thuan (khong pygame) cho viec do bounding box/sphere va
-cat shape tu anh BEV render nen trang. Dung Pillow.
+shape_tools.py - Pure logic (no pygame) to measure bounding box/sphere and
+cut the shape from a white-background BEV render. Uses Pillow.
 
 Quy uoc:
-- Anh render (tu isaac_bev_capture.py) duoc dong khung vua khit 1 o 3x3 met,
-  tuc chieu rong anh = CELL met -> met/pixel = CELL / img_width.
-- "Nen trang, chi thu khong trang la object": pixel duoc coi la OBJECT neu no
-  du toi/du bao hoa so voi trang (xem is_object_mask).
-- Shape mask xuat ra la anh grayscale mode "L": OBJECT = 0 (den, occupied),
+- The render (from isaac_bev_capture.py) is framed exactly to one 3x3 m cell,
+  i.e. image width = CELL meters -> meters/pixel = CELL / img_width.
+- "White bg, anything non-white is object": a pixel is OBJECT if it
+  is dark enough / saturated enough vs white (see is_object_mask).
+- The output shape mask is grayscale "L": OBJECT = 0 (black, occupied),
   NEN = 255 (trang) -> khop voi bev_export._mesh_stamp / quy uoc ROS.
 """
 import os
@@ -27,9 +27,9 @@ def meters_per_pixel(img_w, cell=CELL):
 
 
 def is_object_mask(pil_img):
-    """Tra numpy bool mask (True = object) tu anh RGB nen trang."""
+    """Return a numpy bool mask (True = object) from a white-bg RGB image."""
     if np is None:
-        raise RuntimeError("Pillow/numpy chua cai.")
+        raise RuntimeError("Pillow/numpy not installed.")
     arr = np.asarray(pil_img.convert("RGB"), dtype=np.int16)
     mn = arr.min(axis=2)
     mx = arr.max(axis=2)
@@ -39,7 +39,7 @@ def is_object_mask(pil_img):
 
 
 def auto_bbox(pil_img):
-    """Bounding box cac pixel object -> (x0,y0,x1,y1) pixel, hoac None neu toan trang."""
+    """Bounding box of object pixels -> (x0,y0,x1,y1) px, or None if all white."""
     mask = is_object_mask(pil_img)
     ys, xs = np.where(mask)
     if len(xs) == 0:
@@ -48,7 +48,7 @@ def auto_bbox(pil_img):
 
 
 def radius_from_center_px(pil_img):
-    """Ban kinh (px) hinh tron TAM TAI GIUA ANH bao het object. Tra None neu toan trang."""
+    """Radius (px) of a circle CENTERED ON THE IMAGE enclosing all object pixels. None if all white."""
     mask = is_object_mask(pil_img)
     ys, xs = np.where(mask)
     if len(xs) == 0:
@@ -60,7 +60,7 @@ def radius_from_center_px(pil_img):
 
 
 def bbox_to_wh(box, img_w, cell=CELL):
-    """(x0,y0,x1,y1) pixel -> (w,h) met."""
+    """(x0,y0,x1,y1) px -> (w,h) meters."""
     mpp = meters_per_pixel(img_w, cell)
     x0, y0, x1, y1 = box
     return abs(x1 - x0) * mpp, abs(y1 - y0) * mpp
@@ -71,9 +71,9 @@ def radius_to_m(radius_px, img_w, cell=CELL):
 
 
 def cut_shape(pil_img, box=None):
-    """Cat shape trong 'box' (hoac toan anh) -> PIL 'L': object=0, nen=255."""
+    """Cut the shape in 'box' (or the whole image) -> PIL 'L': object=0, bg=255."""
     if np is None:
-        raise RuntimeError("Pillow/numpy chua cai.")
+        raise RuntimeError("Pillow/numpy not installed.")
     mask = is_object_mask(pil_img)
     if box is not None:
         x0, y0, x1, y1 = box
@@ -85,9 +85,9 @@ def cut_shape(pil_img, box=None):
 
 
 def circle_mask_shape(pil_img, cx, cy, radius_px):
-    """Cat shape trong hinh tron (cx,cy,radius_px) -> PIL 'L': object=0."""
+    """Cut the shape within a circle (cx,cy,radius_px) -> PIL 'L': object=0."""
     if np is None:
-        raise RuntimeError("Pillow/numpy chua cai.")
+        raise RuntimeError("Pillow/numpy not installed.")
     mask = is_object_mask(pil_img)
     h, w = mask.shape
     yy, xx = np.ogrid[:h, :w]
@@ -102,7 +102,7 @@ def circle_mask_shape(pil_img, cx, cy, radius_px):
 
 
 def save_shape_png(pil_L, asset, mesh_dir):
-    """Luu mask shape vao mesh_dir/<asset>.png."""
+    """Save the shape mask to mesh_dir/<asset>.png."""
     if not os.path.isdir(mesh_dir):
         os.makedirs(mesh_dir)
     path = os.path.join(mesh_dir, asset + ".png")

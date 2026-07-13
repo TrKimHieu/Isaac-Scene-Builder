@@ -1,16 +1,16 @@
 """
-build_furniture_shapes.py - Tu dong trich xuat shape cho cac FURNITURE (prop dung
-trong scene) tu anh BEV render nen trang.
+build_furniture_shapes.py - Auto-extract shapes for FURNITURE (props used
+in scenes) from white-background BEV renders.
 
-Voi moi furniture co anh render:
-  - Bounding BOX: w, h (met) tu vung khong-trang (auto-fit).
-  - Bounding SPHERE: r (met) = ban kinh hinh tron tam-tai-goc bao het object.
-  - MESH footprint: cat (object=den, nen=trang) -> mesh_shapes/<asset>.png.
-Ghi tat ca vao data/props_shapes.json (shape mac dinh = bbox) de
-scene_editor.py dung lam mac dinh khi dat prop.
+For each furniture that has a render:
+  - Bounding BOX: w, h (m) from the non-white region (auto-fit).
+  - Bounding SPHERE: r (m) = radius of an origin-centered circle enclosing the object.
+  - MESH footprint: cut (object=black, bg=white) -> mesh_shapes/<asset>.png.
+Write everything to data/props_shapes.json (default shape = bbox) so
+scene_editor.py uses it as the default when placing props.
 
-Chi xu ly furniture trong palette sb.FURNITURE (= furniture co the dat vao scene).
-Cach dung:
+Only handles furniture in the sb.FURNITURE palette (= placeable furniture).
+Usage:
     python src/build_furniture_shapes.py
 """
 import os
@@ -57,14 +57,14 @@ def main():
         bev.save_prop_shape(name, "bbox", w, h, r, mesh=rel)
         done.append((name, w, h, r))
 
-    print("=== Da trich xuat shape cho %d furniture ===" % len(done))
+    print("=== Extracted shapes for %d furniture ===" % len(done))
     print("%-24s %8s %8s %8s" % ("asset", "W(m)", "H(m)", "R(m)"))
     for name, w, h, r in done:
         print("%-24s %8.3f %8.3f %8.3f" % (name, w, h, r))
     if blank:
-        print("\n[bo qua - anh trang, khong footprint]:", ", ".join(blank))
+        print("\n[skipped - white image, no footprint]:", ", ".join(blank))
     if missing:
-        print("\n[thieu anh render]:", ", ".join(missing))
+        print("\n[missing render]:", ", ".join(missing))
     print("\nDa ghi:", bev.SHAPES_JSON)
     print("Mesh footprint -> ", MESH_DIR)
 

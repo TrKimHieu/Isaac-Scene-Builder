@@ -1,24 +1,24 @@
 r"""
-isaac_bev_capture.py - Chup anh BEV (top-down) cua prop trong Isaac Sim.
+isaac_bev_capture.py - Capture top-down BEV images of props in Isaac Sim.
 
-Quy trinh (kieu spawn-lo + an/hien):
-  - 1 scene tam: mieng SAN TRANG phat sang + dome/key light -> nen trang, deu.
+Pipeline (batch-spawn + hide/show):
+  - A temp scene: an emissive WHITE FLOOR plane + dome/key light -> white, even background.
   - Camera TRUC GIAO (orthographic) nhin thang xuong, khung khit o 3x3 m
-    (khong diem tu). USD: be rong khung = aperture * 0.1 -> aperture = 30 cho 3 m.
-  - Nap props theo LO (CHUNK), spawn tai goc (0,0,0) va AN het; roi HIEN lan luot
-    tung prop de chup, chup xong AN lai; het lo thi xoa lo (giai phong RAM).
-  - Ep nen ve trang tuyet doi (theo mau 4 goc) -> "cai gi khong trang la object".
-  - Xuat PNG vao output/mesh_shapes/renders/<asset>.png
-  => Sau do mo shape_editor.py de ve bounding + cat shape tu cac anh nay.
+    (no vanishing point). USD: view width = aperture * 0.1 -> aperture = 30 for 3 m.
+  - Load props in BATCHES (CHUNK), spawn at origin (0,0,0) all HIDDEN; then SHOW one by one
+    to capture, then HIDE again; clear the batch when done (free RAM).
+  - Snap background to pure white (from the 4 corners) -> "anything non-white is object".
+  - Save PNG to output/mesh_shapes/renders/<asset>.png
+  => Then open shape_editor.py to draw bounding boxes + cut shapes from these images.
 
 *** PHAI CHAY BANG PYTHON CUA ISAAC SIM ***, vi du (Windows):
     C:\IsaacProjects\isaacsim\python.bat src/isaac_bev_capture.py --all
-    C:\IsaacProjects\isaacsim\python.bat src/isaac_bev_capture.py SM_Sofa   (1 prop + chan doan)
+    C:\IsaacProjects\isaacsim\python.bat src/isaac_bev_capture.py SM_Sofa   (1 prop + diagnostics)
 
-Ghi chu:
-  - APERTURE_SCALE=10 -> aperture=30 -> khung 3 m. Neu khung lech, chinh hang so nay.
-  - VERTICAL_FLIP: lat doc cho khop huong top-down cua editor (y huong xuong).
-  - CHUNK: so prop spawn dong thoi (bao ve RAM khi chup ca 465 prop).
+Notes:
+  - APERTURE_SCALE=10 -> aperture=30 -> 3 m frame. If the frame is off, tune this constant.
+  - VERTICAL_FLIP: flip vertically to match the editor top-down orientation (y-down).
+  - CHUNK: number of props spawned at once (protects RAM when capturing all 465 props).
 """
 import os
 import argparse
@@ -30,22 +30,22 @@ from utils import safe_name as _safe_name
 
 
 def parse_args():
-    ap = argparse.ArgumentParser(description="Chup BEV top-down cac prop trong Isaac Sim.")
-    ap.add_argument("asset", nargs="?", default=None, help="Ten 1 prop (khong .usd). Bo trong + --all de chup tat ca.")
-    ap.add_argument("--all", action="store_true", help="Chup toan bo prop trong moi PROP_DIRS.")
-    ap.add_argument("--extra", action="store_true", help="Chi chup prop trong assets/extra/ (asset moi tai ve).")
+    ap = argparse.ArgumentParser(description="Capture top-down BEV of props in Isaac Sim.")
+    ap.add_argument("asset", nargs="?", default=None, help="Name of one prop (no .usd). Leave empty + --all to capture everything.")
+    ap.add_argument("--all", action="store_true", help="Capture all props across every PROP_DIRS.")
+    ap.add_argument("--extra", action="store_true", help="Only capture props in assets/extra/ (newly downloaded assets).")
     ap.add_argument("--res", type=int, default=RESOLUTION)
     ap.add_argument("--out", default=RENDER_DIR)
     return ap.parse_args()
 
 
 def _prop_dirs():
-    """Danh sach thu muc chua prop (tuyet doi)."""
+    """List of prop directories (absolute)."""
     return PROP_DIRS
 
 
 def _index_props():
-    """Map ten -> duong dan .usd, quet qua tat ca PROP_DIRS (uu tien thu muc dau)."""
+    """Map name -> .usd path, scanning all PROP_DIRS (first dir wins)."""
     idx = {}
     for d in _prop_dirs():
         if not os.path.isdir(d):
@@ -58,7 +58,7 @@ def _index_props():
 
 
 def asset_list(args):
-    """Danh sach (ten, duong_dan_usd) can chup, quet ca assets/office/Props + assets/extra/."""
+    """List of (name, usd_path) to capture, scanning assets/office/Props + assets/extra/."""
     idx = _index_props()
     try:
         import scene_builder as sb
@@ -72,7 +72,7 @@ def asset_list(args):
         names = sorted(os.path.splitext(f)[0] for f in os.listdir(extra_dir)
                        if f.lower().endswith(".usd")) if os.path.isdir(extra_dir) else []
     elif args.all:
-        names = sorted(idx.keys())            # toan bo prop trong moi thu muc
+        names = sorted(idx.keys())            # all props across every dir
     else:
         names = (palette[:1] or sorted(idx.keys())[:1])
     out = []
@@ -81,12 +81,12 @@ def asset_list(args):
         if os.path.isfile(p):
             out.append((n, p))
         else:
-            print("[bo qua] khong thay:", n)
+            print("[skip] not found:", n)
     return out
 
 
 # ---------------------------------------------------------------------------
-# Main (chi chay duoc trong Isaac Sim)
+# Main (runs only inside Isaac Sim)
 # ---------------------------------------------------------------------------
 def main():
     args = parse_args()
@@ -95,10 +95,10 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     targets = asset_list(args)
     if not targets:
-        print("Khong co prop de chup.")
+        print("No props to capture.")
         return
 
-    # 1) Khoi dong Isaac Sim (headless) TRUOC khi import cac module con lai.
+    # 1) Start Isaac Sim (headless) BEFORE importing the remaining modules.
     os.environ.setdefault("OMNI_KIT_ACCEPT_EULA", "YES")
     try:                                   # Isaac Sim 4.5 / 5 / 6 (namespace moi)
         from isaacsim import SimulationApp
@@ -120,10 +120,10 @@ def main():
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.Xform.Define(stage, "/World")
 
-    # 2) Nen trang phang (plane phat sang trang tuyet doi -> khong bong)
+    # 2) Flat white background (emissive pure-white plane -> no shadows)
     _make_white_ground(stage, UsdGeom, UsdShade, Gf, Sdf, size=GROUND_SIZE)
 
-    # 3) Anh sang deu (dome trang) de vat sang ro
+    # 3) Even lighting (white dome) so the object is well lit
     dome = UsdLux.DomeLight.Define(stage, "/World/DomeLight")
     dome.CreateIntensityAttr(400.0)
     dome.CreateColorAttr(Gf.Vec3f(1.0, 1.0, 1.0))
@@ -132,7 +132,7 @@ def main():
     key.CreateColorAttr(Gf.Vec3f(1.0, 1.0, 1.0))
     UsdGeom.Xformable(key).AddRotateXYZOp().Set(Gf.Vec3f(-90, 0, 0))  # chieu thang xuong
 
-    # 4) Camera orthographic nhin thang xuong (prim USD thuan, khong dung sensor)
+    # 4) Orthographic camera looking straight down (plain USD prim, not the sensor)
     cam_xf = UsdGeom.Camera.Define(stage, "/World/TopCam")
     UsdGeom.Xformable(cam_xf).AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, CAM_HEIGHT))
     cam_prim = stage.GetPrimAtPath("/World/TopCam")
@@ -143,7 +143,7 @@ def main():
     _c.GetVerticalApertureAttr().Set(ap)
     _c.CreateClippingRangeAttr().Set(Gf.Vec2f(0.01, 100000.0))
 
-    # 4b) Render qua Replicator (dang tin cay cho headless): render_product + rgb annotator
+    # 4b) Render via Replicator (reliable for headless): render_product + rgb annotator
     render_product = rep.create.render_product("/World/TopCam", (res, res))
     rgb_annot = rep.AnnotatorRegistry.get_annotator("rgb")
     rgb_annot.attach([render_product])
@@ -169,17 +169,17 @@ def main():
     UsdGeom.Scope.Define(stage, props_root)
     n_done = 0
     total = len(targets)
-    debug = (total == 1)                  # chay 1 prop -> in chan doan + luu anh raw
+    debug = (total == 1)                  # single prop -> print diagnostics + save raw image
     bbox_cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(),
                                    [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
 
-    # 5) Chup theo LO: spawn ca lo (an het) -> hien/chup/an tung cai -> xoa lo
+    # 5) Capture per BATCH: spawn the whole batch (all hidden) -> show/capture/hide each -> clear batch
     for base in range(0, total, CHUNK_SIZE):
         chunk = targets[base:base + CHUNK_SIZE]
         spawned = []
         for name, usd_path in chunk:
             ppath = props_root + "/" + _safe_name(name)
-            # Isaac tu chuan hoa don vi (metersPerUnit) khi reference -> khong scale tay
+            # Isaac auto-normalizes units (metersPerUnit) on reference -> no manual scale
             add_reference_to_stage(usd_path=usd_path.replace("\\", "/"), prim_path=ppath)
             UsdGeom.Imageable(stage.GetPrimAtPath(ppath)).MakeInvisible()
             spawned.append((name, ppath))
@@ -203,7 +203,7 @@ def main():
 
             rgb = grab_rgb()
             if rgb is None:
-                print("[skip] chua co anh:", name, flush=True)
+                print("[skip] no image yet:", name, flush=True)
                 UsdGeom.Imageable(prim).MakeInvisible()
                 continue
             raw = _rgba_to_white_rgb(rgb, np, Image)
@@ -219,18 +219,18 @@ def main():
             n_done += 1
             print("[ok] %d/%d %s.png" % (n_done, total, name), flush=True)
 
-        # xoa ca lo de giai phong RAM truoc lo sau
+        # clear the batch to free RAM before the next one
         for _, ppath in spawned:
             _clear_prim(stage, ppath)
         render(1)
 
-    print("HOAN TAT: %d / %d anh -> %s" % (n_done, total, out_dir), flush=True)
+    print("DONE: %d / %d images -> %s" % (n_done, total, out_dir), flush=True)
     sim_app.close()
 
 
 def _debug_prop(name, prim, stage, cam, cam_prim, bbox_cache, out_dir,
                 np, Image, Usd, UsdGeom):
-    """Chan doan cho lan chay 1 prop: in so Gprim + world bbox cua prop."""
+    """Diagnostics for a single-prop run: print Gprim count + world bbox of the prop."""
     bbox_cache.Clear()
     gprims = sum(1 for p in Usd.PrimRange(prim) if p.IsA(UsdGeom.Gprim))
     try:
@@ -246,7 +246,7 @@ _MPU = {}
 
 
 def _read_mpu(path, Usd, UsdGeom):
-    """metersPerUnit cua file prop (cache). Prop cm -> 0.01."""
+    """metersPerUnit of the prop file (cached). cm props -> 0.01."""
     if path in _MPU:
         return _MPU[path]
     v = 1.0
@@ -260,7 +260,7 @@ def _read_mpu(path, Usd, UsdGeom):
 
 
 def _make_white_ground(stage, UsdGeom, UsdShade, Gf, Sdf, size):
-    """Mieng quad lon o z=0, vat lieu UsdPreviewSurface emissive trang tuyet doi."""
+    """Large quad at z=0 with an emissive pure-white UsdPreviewSurface material."""
     mesh = UsdGeom.Mesh.Define(stage, "/World/Ground")
     h = size / 2.0
     mesh.CreatePointsAttr([Gf.Vec3f(-h, -h, 0), Gf.Vec3f(h, -h, 0),
@@ -273,7 +273,7 @@ def _make_white_ground(stage, UsdGeom, UsdShade, Gf, Sdf, size):
     shader = UsdShade.Shader.Define(stage, "/World/Ground/WhiteMat/Shader")
     shader.CreateIdAttr("UsdPreviewSurface")
     shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(1, 1, 1))
-    # emissive > 1 de bao hoa -> nen trang khi qua tonemap
+    # emissive > 1 to saturate -> white background after tonemap
     shader.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(6, 6, 6))
     shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(1.0)
     mat.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
@@ -286,11 +286,11 @@ def _clear_prim(stage, path):
 
 
 def _snap_background_white(img, np, Image, delta=14):
-    """Ep pixel gan mau NEN (lay tu 4 goc) ve trang tuyet doi 255.
+    """Snap pixels near the BACKGROUND color (from the 4 corners) to pure white 255.
 
-    Nen la mieng phang duoc chieu deu -> mau dong nhat; object khac mau nen.
-    Nho vay du tonemap lam nen thanh xam (vd 233), ta van co nen trang sach de
-    shape_editor tach shape ("chi thu khong trang la object").
+    The background is an evenly-lit plane -> uniform color; the object differs from it.
+    So even if tonemap makes the bg gray (e.g. 233), we still get a clean white bg for
+    shape_editor to segment shapes ("anything non-white is object").
     """
     a = np.asarray(img).astype(np.int16)
     h, w, _ = a.shape
@@ -304,7 +304,7 @@ def _snap_background_white(img, np, Image, delta=14):
 
 
 def _rgba_to_white_rgb(rgba, np, Image):
-    """Ep kieu -> RGB, gop nen trang (phong khi co alpha)."""
+    """Cast -> RGB, composite over white (in case there is alpha)."""
     a = np.asarray(rgba)
     if a.dtype != np.uint8:
         a = (np.clip(a, 0.0, 1.0) * 255).astype(np.uint8)

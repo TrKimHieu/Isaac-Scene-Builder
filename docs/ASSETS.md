@@ -1,50 +1,52 @@
-# Thêm asset nội thất & đổi prop cấu trúc
+**English** · [Tiếng Việt](ASSETS.vi.md)
 
-Dự án hiện dùng bộ asset **Office** (`Office/Props/*.usd`). Bạn có thể bổ sung thêm
-nội thất và đổi prop tường/sàn như dưới đây.
+# Adding furniture assets & swapping structural props
 
-## 1. Thêm nội thất mới (tự đăng ký)
+The project ships with the **Office** asset pack (`assets/office/Props/*.usd`). You can add
+more furniture and change the wall/floor props as described below.
 
-Palette lấy từ `scene_builder.available_furniture()` = danh sách curated (`FURNITURE`)
-**+ mọi `.usd` trong `ExtraProps/`**. Nên chỉ cần:
+## 1. Add new furniture (auto-register)
 
-1. Thả file asset **tự chứa** vào `ExtraProps/` (xem `ExtraProps/README.md`).
-2. (Khuyến nghị) lấy shape thật để BEV/editor chính xác:
-   - `%ISAACSIM%\python.bat isaac_bev_capture.py <Ten>`  — chụp ảnh BEV nền trắng.
-   - `python build_furniture_shapes.py`  — đo W/H/R + cắt mesh footprint, ghi `BEV_for_Nam/props_shapes.json`.
-3. Mở `scene_editor.py` → asset có trong palette; bán kính/shape lấy từ `props_shapes.json`
-   (nếu chưa đo thì mặc định R=0.5).
+The palette comes from `scene_builder.available_furniture()` = the curated list (`FURNITURE`)
+**+ every `.usd` in `assets/extra/`**. So you only need to:
 
-Nếu muốn thêm vào **danh sách curated** (kèm bán kính cố định): thêm `("<Ten>", <r>)`
-vào `FURNITURE` trong `scene_builder.py` (và `generate_scene.py` nếu dùng bộ sinh ngẫu nhiên).
+1. Drop a **self-contained** asset file into `assets/extra/` (see `assets/extra/README.md`).
+2. (Recommended) measure the real shape so BEV/editor are accurate:
+   - `%ISAACSIM%\python.bat src/isaac_bev_capture.py <Name>`  — capture a white-background BEV image.
+   - `python src/build_furniture_shapes.py`  — measure W/H/R + cut the mesh footprint, write `data/props_shapes.json`.
+3. Open `src/scene_editor.py` → the asset is in the palette; radius/shape come from `props_shapes.json`
+   (default R=0.5 if not measured yet).
 
-## 2. Nguồn tải asset USD tương thích Isaac Sim
+To add it to the **curated list** (with a fixed radius): add `("<Name>", <r>)` to `FURNITURE`
+in `src/config.py`.
 
-Yêu cầu: **USD/USDZ, Z-up, đơn vị mét, tự chứa** (material nhúng hoặc kèm texture).
+## 2. Where to get Isaac-Sim-compatible USD assets
 
-- **Isaac Sim built-in assets** (đã cài sẵn theo Isaac Sim): thư viện `Isaac/Props/`,
-  `Isaac/Environments/`, và **SimReady Assets** (nội thất, thùng, pallet, …). Trỏ tới
-  asset root của Isaac Sim (Nucleus local hoặc thư mục cài) và copy `.usd` cần dùng vào `ExtraProps/`.
-- **NVIDIA Omniverse — SimReady Explorer / Asset Browser**: kho nội thất/vật thể SimReady
-  chuẩn USD, kéo-thả hoặc export `.usd`.
-- **Nguồn USDZ công khai** (mẫu 3D): các thư viện cho tải `.usdz` (Apple Quick Look gallery,
-  Sketchfab export USDZ, …). `.usdz` là gói tự chứa nên rất hợp để thả vào `ExtraProps/`.
+Requirements: **USD/USDZ, Z-up, meter units, self-contained** (embedded materials or bundled textures).
 
-Lưu ý:
-- Nếu asset dựng bằng **cm**, prop có thể có `xformOp:scale = 0.01` như bộ Office — không sao,
-  cứ chụp BEV kiểm tra footprint có ra kích thước mét hợp lý.
-- Nếu footprint bị lật/xoay khác, chỉnh `VERTICAL_FLIP` trong `isaac_bev_capture.py`
-  hoặc xoay lại trong `shape_editor.py`.
+- **Isaac Sim built-in assets** (installed with Isaac Sim): the `Isaac/Props/`,
+  `Isaac/Environments/` libraries, and **SimReady Assets** (furniture, bins, pallets, …). Point to
+  the Isaac Sim asset root (local Nucleus or install folder) and copy the `.usd` you need into `assets/extra/`.
+- **NVIDIA Omniverse — SimReady Explorer / Asset Browser**: a library of SimReady, USD-standard
+  furniture/objects; drag-and-drop or export `.usd`.
+- **Public USDZ sources** (3D models): galleries that offer `.usdz` downloads (Apple Quick Look gallery,
+  Sketchfab USDZ export, …). `.usdz` is a self-contained package, ideal for dropping into `assets/extra/`.
 
-## 3. Đổi prop tường/sàn (cấu trúc)
+Notes:
+- If an asset is authored in **cm**, the prop may carry `xformOp:scale = 0.01` like the Office pack — that's
+  fine; just capture a BEV and confirm the footprint comes out at a sensible meter size.
+- If the footprint is flipped/rotated, toggle `VERTICAL_FLIP` in `src/isaac_bev_capture.py`
+  or re-orient it in `src/shape_editor.py`.
 
-Trong `scene_editor.py`, nhóm **"CAU TRUC (prop 3D)"** ở panel có 2 nút xoay vòng:
-- **Wall:** `SM_Wall_3m` (mặc định) / `SM_Window_3m_A` / `SM_Window_3m_B` / `SM_Wall_3m_doorElevator`.
+## 3. Swapping wall/floor props (structure)
+
+In `src/scene_editor.py`, the **"STRUCTURE (3D)"** panel group has two cycle buttons:
+- **Wall:** `SM_Wall_3m` (default) / `SM_Window_3m_A` / `SM_Window_3m_B` / `SM_Wall_3m_doorElevator`.
 - **Floor:** `SM_Floor_3m`.
 
-Lựa chọn được lưu vào map (`structure`) và truyền sang `build_scene` khi Export `.usd`.
-Chỉ nên dùng prop **dài đúng 3 m** để khớp ô lưới (tường 2m/6m, sàn 6m không khớp).
-Muốn thêm lựa chọn, sửa `STRUCTURE_CHOICES` trong `scene_builder.py`.
+The choice is saved into the map (`structure`) and passed to `build_scene` when you export `.usd`.
+Use props that are **exactly 3 m long** so they match the grid (2m/6m walls and 6m floors do not fit).
+To add more options, edit `STRUCTURE_CHOICES` in `src/config.py`.
 
-> Lưu ý: tường được **canh giữa đường lưới tự động** (theo bbox thật của prop) nên khi đổi
-> prop tường khác kích thước độ dày vẫn nằm đúng đường lưới.
+> Note: walls are **auto-centered on the grid line** (from the prop's real bbox), so swapping to a
+> wall prop with a different thickness still lands exactly on the grid line.
