@@ -2,7 +2,7 @@
 
 **English** · [Tiếng Việt](README.vi.md)
 
-# 🗺️ Isaac Scene Builder
+# Isaac Scene Builder
 
 ### Draw a 2D floor plan → get a 3D USD scene for **NVIDIA Isaac Sim** + a **BEV** map for robot navigation
 
@@ -29,15 +29,15 @@ the tool builds a USD scene and a top-down occupancy map (ROS-ready).
 
 <br>
 
-## 🔄 Workflow — three steps, from sketch to robot map
+## Workflow — three steps, from sketch to robot map
 
 > Each grid cell = **3×3 meters**. You only work in step 1; the next two are a single keypress.
 
 | Step | You do | Result |
 |:---:|---|---|
-| **01 ✏️** | Design the 2D plan — paint floors, drag walls, drop furniture | A visual grid map |
-| **02 🧊** | Press **`S`** | `scene.usd` — a 3D scene that opens directly in Isaac Sim, walls aligned to the grid |
-| **03 🗺️** | Press **`B`** | A black-and-white BEV map + `CSV/SVG/PGM/YAML` for ROS `map_server` |
+| **01** | Design the 2D plan — paint floors, drag walls, drop furniture | A visual grid map |
+| **02** | Press **`S`** | `scene.usd` — a 3D scene that opens directly in Isaac Sim, walls aligned to the grid |
+| **03** | Press **`B`** | A black-and-white BEV map + `CSV/SVG/PGM/YAML` for ROS `map_server` |
 
 <br>
 
@@ -45,13 +45,13 @@ the tool builds a USD scene and a top-down occupancy map (ROS-ready).
 
 | | |
 |---|---|
-| 🧱 **3 drawing tools**<br>`Floor` paint · `Wall` drag · `Furniture` drop. Drag to fill whole areas / long segments. | 🎛️ **Precise inspector**<br>Click an item to edit its X/Y position, rotation and shape — type numbers directly or hit `−` `+`. |
-| ⬛ **3 shape types**<br>**BBox** (box) · **Sphere** (circle) · **Mesh** (real footprint). Pick one and new props default to it. | 🪑 **68 furniture models**<br>Desks, chairs, sofas, cabinets, plants… including official **NVIDIA** assets. Search by name & filter by category. |
-| ↩️ **Undo/Redo & Zoom**<br>`Ctrl+Z`/`Ctrl+Y` (50 steps) · `Ctrl`+wheel to zoom · hold the middle button to pan. | 📤 **Tidy per-scene export**<br>Each scene gets its own folder under `output/` — USD, BEV and metadata, ready to hand to a robot. |
+| **3 drawing tools**<br>`Floor` paint · `Wall` drag · `Furniture` drop. Drag to fill whole areas / long segments. | 🎛️ **Precise inspector**<br>Click an item to edit its X/Y position, rotation and shape — type numbers directly or hit `−` `+`. |
+| **3 shape types**<br>**BBox** (box) · **Sphere** (circle) · **Mesh** (real footprint). Pick one and new props default to it. | 🪑 **68 furniture models**<br>Desks, chairs, sofas, cabinets, plants… including official **NVIDIA** assets. Search by name & filter by category. |
+| **Undo/Redo & Zoom**<br>`Ctrl+Z`/`Ctrl+Y` (50 steps) · `Ctrl`+wheel to zoom · hold the middle button to pan. | 📤 **Tidy per-scene export**<br>Each scene gets its own folder under `output/` — USD, BEV and metadata, ready to hand to a robot. |
 
 <br>
 
-## 🖼️ The BEV map — what the robot actually reads
+## The BEV map — what the robot actually reads
 
 <div align="center">
 
@@ -69,7 +69,7 @@ Seen from above, each pixel carries a state — this is the *occupancy grid* ROS
 
 <br>
 
-## 🚀 Quick start
+## Quick start
 
 > Needs Python 3.12+ and `pygame`, `Pillow`, `numpy` — install with `pip install -r requirements.txt`.
 
@@ -108,7 +108,7 @@ B  →  output/bev/sceneN/           # BEV map for the robot (5 formats)
 
 <br>
 
-## 📁 Project structure
+## Project structure
 
 ```
 isaac-scene-builder/
@@ -134,7 +134,7 @@ isaac-scene-builder/
 
 <br>
 
-## 🎨 Adding new assets
+## Adding new assets
 
 The palette **auto-registers**: just drop a self-contained `.usd` into `assets/extra/` and it shows up in the editor.
 To get the right size & shape:
@@ -152,7 +152,7 @@ Compatible asset sources (NVIDIA Omniverse / SimReady) and details: see [`docs/A
 
 <br>
 
-## 🧪 Tests
+## Tests
 
 ```bash
 pytest              # 55 passed
@@ -160,5 +160,5 @@ pytest              # 55 passed
 
 <div align="center">
 <br>
-<sub>2D grid → USD 3D → BEV (ROS) · 68 furniture · 5 export formats · 55/55 tests</sub>
+<sub>2D grid → USD 3D → BEV (ROS) · 68 furniture · 5 export formats </sub>
 </div>
