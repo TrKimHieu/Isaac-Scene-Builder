@@ -100,7 +100,56 @@
   "6,3": 4,
   "7,3": 1
  },
- "furniture": [],
+ "furniture": [
+  {
+   "asset": "AV_Steam",
+   "x": 6.0,
+   "y": 4.5,
+   "yaw": 0,
+   "shape": "mesh"
+  },
+  {
+   "asset": "SM_ChairOffice",
+   "x": 4.0,
+   "y": 6.0,
+   "yaw": 90,
+   "shape": "bbox",
+   "w": 0.6,
+   "h": 0.6,
+   "r": 0.4
+  },
+  {
+   "asset": "SM_ChairOffice",
+   "x": 8.0,
+   "y": 6.0,
+   "yaw": 270,
+   "shape": "bbox",
+   "w": 0.6,
+   "h": 0.6,
+   "r": 0.4
+  },
+  {
+   "asset": "HOS_SM_HospitalBed_01b",
+   "x": 19.5,
+   "y": 3.0,
+   "yaw": 0,
+   "shape": "mesh"
+  },
+  {
+   "asset": "AV_Gilbert",
+   "x": 18.0,
+   "y": 13.5,
+   "yaw": 0,
+   "shape": "mesh"
+  },
+  {
+   "asset": "DT_Rack_A01_PR_NVD_01",
+   "x": 6.0,
+   "y": 16.5,
+   "yaw": 0,
+   "shape": "mesh"
+  }
+ ],
  "structure": {},
  "styles": {
   "4,0": "hospital",
@@ -143,5 +192,30 @@
  "door_default": "open",
  "door_state": {
   "v:4,4": "closed"
+ },
+ "robot": {
+  "spawn": {
+   "x": 2.0,
+   "y": 2.0,
+   "yaw": 0.0
+  },
+  "waypoints": [
+   [
+    10.5,
+    4.5
+   ],
+   [
+    16.0,
+    7.5
+   ],
+   [
+    16.5,
+    15.0
+   ],
+   [
+    3.0,
+    13.0
+   ]
+  ]
  }
 }

@@ -95,6 +95,23 @@ style of the room it looks into), capped at free ends and corners; doors get a r
 leaf (open by default), windows and glass walls are full 3 m modules. Example:
 `data/maps/demo_architecture.json`.
 
+**Simulation-ready output**
+- `.usd`: `PhysicsScene` + static colliders on floors, walls, doors, windows, glass and every
+  furniture mesh; `UsdSemantics` class labels (`floor`, `wall`, `door`, `window`, `glass_wall`,
+  `ceiling`, furniture category such as `table`, `seating`, `medical`) for Replicator
+  segmentation / bounding boxes; robot spawn + waypoints as `/World/Robot` markers.
+- **Robot tool (5):** click = waypoint, Shift+click = spawn, wheel = heading, right-click = remove.
+- **Height occupancy:** `python tools/slice_footprints.py [--z 0.05 0.50]` cuts every prop's real
+  mesh at robot-body height; BEV export then also writes `<stem>_occ_<z0>-<z1>.pgm/.yaml`
+  (a low robot drives under table tops; glass-top tables block only at their legs).
+  Open door leaves are obstacles in both maps.
+- **ROS 2 / Nav2:** the PGM + YAML map frame equals the USD world frame; `<stem>_nav.yaml`
+  (initial pose + waypoints) and `follow_waypoints.py` (nav2_simple_commander) are exported
+  with the BEV.
+- OpenUSD is loaded from Isaac Sim's bundle (`C:\isaacsim` or `$ISAACSIM`) when `pxr` is not
+  installed, so the editor writes `.usd` from plain Python. Translucent glass is skipped by
+  Replicator segmentation unless translucency is enabled in its settings.
+
 **3 · Export — one key**
 ```text
 S  →  output/scenes/sceneN.usd     # 3D scene for Isaac Sim
@@ -107,7 +124,7 @@ B  →  output/bev/sceneN/           # BEV map for the robot (5 formats)
 
 | Key | Action | Key | Action |
 |:---:|---|:---:|---|
-| `1` `2` `3` `4` | Floor / Wall / Furniture / Style | `Ctrl+Z` `Ctrl+Y` | Undo / Redo |
+| `1`–`5` | Floor / Wall / Furniture / Style / Robot | `Ctrl+Z` `Ctrl+Y` | Undo / Redo |
 | `O` | Open / close the door under the cursor | `V` | Mesh view: mask / color |
 | `Tab` | Switch tool | `Ctrl`+wheel | Zoom to cursor |
 | `R` | Rotate furniture 5° | Middle-drag | Pan the view |

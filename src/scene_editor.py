@@ -13,6 +13,9 @@ Usage:
   STYLE (4) - Paint a room style (office / hospital / warehouse / home) on floor cells:
               click or DRAG a rectangle; pick the style in the panel. Walls take the style
               of the room each face looks into.
+  ROBOT (5) - Click = add a waypoint, Shift+click = robot spawn, wheel = spawn heading,
+              right-click = remove the nearest waypoint / spawn. Exported with the BEV as
+              <stem>_nav.yaml + follow_waypoints.py (ROS 2 Nav2) and as USD markers.
   FURNITURE (3) - Pick a prop in the palette, click empty space to place (auto-selected).
               Click a placed prop to SELECT it; HOLD left + drag to MOVE it.
               TRANSFORM panel: edit X/Y/Yaw and pick a SHAPE (BBox / Sphere / Mesh) -
@@ -44,7 +47,7 @@ import bev_export as bev
 from config import (PROJECT_ROOT, MAPS_DIR, CELL, SNAP as _SNAP, FURNITURE_CATEGORIES,
                     EDGE_NAMES, EDGE_CYCLE, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS,
                     EDGE_OPENING, STYLES, DEFAULT_STYLE, STYLE_COLORS, DOOR_DEFAULT,
-                    WINDOW_COL, GLASS_COL)
+                    WINDOW_COL, GLASS_COL, ROBOT_COL, SPAWN_COL)
 import architecture as arch
 from config import (C0, C1, C2, C3, C4, MESH_MARK, BG, GRID_LINE, FLOOR_COL,
                     FLOOR_HOVER, LIGHT_COL, WALL_COL, DOOR_COL, HOVER_EDGE,
@@ -91,6 +94,7 @@ class Editor:
         self.door_default = DOOR_DEFAULT
         self.edge_type = EDGE_WALL          # what a wall-tool drag paints
         self.paint_style = "hospital"       # what the style tool paints
+        self.robot = {}        # {"spawn": {x,y,yaw}, "waypoints": [[x,y], ...]}
         self.place_shape = "bbox"   # default shape when placing a new prop
         self.cur_yaw = 0.0
         self.msg = "Ready. FLOOR tool: click / drag to paint floor."
@@ -387,6 +391,44 @@ class Editor:
                     n += 1
         self.msg = "Style %s: %d cells." % (STYLES[self.paint_style]["label"], n)
 
+    def remove_robot_point(self, x, y, radius=1.0):
+        """Remove the waypoint (or spawn) nearest to (x, y) within radius m."""
+        best, best_d = None, radius
+        for k, (wx, wy) in enumerate(self.robot.get("waypoints") or []):
+            dd = math.hypot(wx - x, wy - y)
+            if dd < best_d:
+                best, best_d = k, dd
+        sp = self.robot.get("spawn")
+        if sp and math.hypot(sp["x"] - x, sp["y"] - y) < best_d:
+            self._snapshot()
+            self.robot["spawn"] = None
+            self.msg = "Spawn removed."
+        elif best is not None:
+            self._snapshot()
+            self.robot["waypoints"].pop(best)
+            self.msg = "Waypoint %d removed." % (best + 1)
+
+    def draw_robot(self):
+        """Spawn arrow + numbered waypoints joined by the route polyline."""
+        sp = self.robot.get("spawn")
+        pts = [self.usd_to_screen(x, y) for x, y in self.robot.get("waypoints") or []]
+        route = ([self.usd_to_screen(sp["x"], sp["y"])] if sp else []) + pts
+        if len(route) >= 2:
+            pygame.draw.lines(self.screen, ROBOT_COL, False, route, 2)
+        rad = max(5, int(self.cs) // 7)
+        for k, (px, py) in enumerate(pts):
+            pygame.draw.circle(self.screen, ROBOT_COL, (int(px), int(py)), rad)
+            s = self.font_s.render(str(k + 1), True, C0)
+            self.screen.blit(s, (int(px - s.get_width() / 2), int(py - s.get_height() / 2)))
+        if sp:
+            cx, cy = self.usd_to_screen(sp["x"], sp["y"])
+            a = math.radians(sp.get("yaw", 0.0))
+            L = rad * 2.4
+            tip = (cx + math.cos(a) * L, cy + math.sin(a) * L)
+            pygame.draw.circle(self.screen, SPAWN_COL, (int(cx), int(cy)), rad + 2)
+            pygame.draw.line(self.screen, C0, (cx, cy), tip, 3)
+            pygame.draw.circle(self.screen, SPAWN_COL, (int(tip[0]), int(tip[1])), 3)
+
     def toggle_door(self, mx, my):
         """Open <-> closed for the door edge under the cursor."""
         kind, i, j = self.nearest_edge(mx, my)
@@ -583,6 +625,8 @@ class Editor:
             "styles": {"%d,%d" % k: v for k, v in self.styles.items()},
             "door_default": self.door_default,
             "door_state": dict(self.door_state),
+            "robot": {"spawn": dict(self.robot["spawn"]) if self.robot.get("spawn") else None,
+                      "waypoints": [list(w) for w in self.robot.get("waypoints", [])]},
         }
 
     def load_map_data(self, m):
@@ -595,6 +639,9 @@ class Editor:
         self.styles = sb._ikey(m.get("styles"))
         self.door_state = dict(m.get("door_state") or {})
         self.door_default = m.get("door_default") or DOOR_DEFAULT
+        r = m.get("robot") or {}
+        self.robot = {"spawn": dict(r["spawn"]) if r.get("spawn") else None,
+                      "waypoints": [list(w) for w in r.get("waypoints") or []]}
         self.deselect()
         self.ctx_menu = None
         self._recalc_layout()
@@ -707,8 +754,9 @@ class Editor:
         except Exception as e:
             self.msg = "BEV export error: %s" % e
             return
-        self.msg = "BEV -> output/bev/%s/ (csv,svg,png,pgm,yaml) | floor %d, wall %d, props %d" % (
-            stem, st["floor"], st["wall"], st["prop"])
+        self.msg = "BEV -> output/bev/%s/ (csv,svg,png,pgm,yaml%s%s) | floor %d, wall %d, props %d" % (
+            stem, ",occ" if st.get("occ") else "", ",nav2" if st.get("nav") else "",
+            st["floor"], st["wall"], st["prop"])
 
     def clear(self):
         self.cells.clear(); self.vedges.clear(); self.hedges.clear(); self.furniture.clear()
@@ -764,6 +812,21 @@ class Editor:
                 self.open_ctx_menu(mx, my)
             return
         # FLOOR / WALL: left starts a drag; right clears a single cell/edge
+        if self.tool == "robot":
+            x, y = self.screen_to_usd(mx, my)
+            x, y = round(x / SNAP) * SNAP, round(y / SNAP) * SNAP
+            if button == 1:
+                self._snapshot()
+                if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                    yaw = (self.robot.get("spawn") or {}).get("yaw", 0.0)
+                    self.robot["spawn"] = {"x": x, "y": y, "yaw": yaw}
+                    self.msg = "Robot spawn @ (%.1f, %.1f)" % (x, y)
+                else:
+                    self.robot.setdefault("waypoints", []).append([x, y])
+                    self.msg = "Waypoint %d @ (%.1f, %.1f)" % (len(self.robot["waypoints"]), x, y)
+            elif button == 3:
+                self.remove_robot_point(x, y)
+            return
         if self.tool in ("floor", "style"):
             if button == 1:
                 self.drag_start = self.hit_cell(mx, my)
@@ -868,6 +931,7 @@ class Editor:
         elif key == "wall": self.switch_tool("wall")
         elif key == "furni": self.switch_tool("furniture")
         elif key == "style": self.switch_tool("style")
+        elif key == "robot": self.switch_tool("robot")
         elif key.startswith("et_"):
             self.edge_type = int(key[3:])
             self.msg = "Wall drag paints: %s" % EDGE_NAMES[self.edge_type]
@@ -937,6 +1001,7 @@ class Editor:
         if k == pygame.K_F11: self.toggle_fullscreen()
         elif k == pygame.K_1: self.switch_tool("floor")
         elif k == pygame.K_4: self.switch_tool("style")
+        elif k == pygame.K_5: self.switch_tool("robot")
         elif k == pygame.K_o and self.tool == "wall":
             self.toggle_door(*pygame.mouse.get_pos())
         elif k == pygame.K_2: self.switch_tool("wall")
@@ -982,6 +1047,10 @@ class Editor:
             return
         if over_panel:
             self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll - dy * 40))
+        elif self.tool == "robot" and self.robot.get("spawn"):
+            sp = self.robot["spawn"]
+            sp["yaw"] = (sp.get("yaw", 0.0) + dy * 15) % 360
+            self.msg = "Spawn heading %d deg" % int(sp["yaw"])
         elif self.tool == "furniture":
             if self.selected is not None:
                 self.rotate_furniture(self.selected, dy * 5)   # rotate 5 deg per notch
@@ -1037,6 +1106,7 @@ class Editor:
         # furniture
         for idx, f in enumerate(self.furniture):
             self.draw_furni(f, selected=(idx == self.selected))
+        self.draw_robot()
 
     def draw_drag_preview(self):
         if self.drag_start is None or self.drag_cur is None:
@@ -1211,7 +1281,7 @@ class Editor:
     def _btn_groups(self):
         groups = [
             ("TOOLS", [("floor", "1 Floor"), ("wall", "2 Wall"), ("furni", "3 Furniture"),
-                       ("style", "4 Style")]),
+                       ("style", "4 Style"), ("robot", "5 Robot")]),
             ("HOA TAC", [("undo", "Undo (Ctrl+Z)"), ("redo", "Redo (Ctrl+Y)")]),
             ("GRID", [("walls", "Auto-walls (W)"), ("clear", "Clear (C)"),
                       ("gx-", "X -"), ("gx+", "X +"), ("gy-", "Y -"), ("gy+", "Y +")]),
@@ -1429,7 +1499,8 @@ class Editor:
         return y + row_h + 6
 
     def _draw_button(self, rect, key, label, mx, my, danger=False):
-        tool_of = {"floor": "floor", "wall": "wall", "furni": "furniture", "style": "style"}
+        tool_of = {"floor": "floor", "wall": "wall", "furni": "furniture", "style": "style",
+                   "robot": "robot"}
         active = (tool_of.get(key) == self.tool or key == "et_%d" % self.edge_type
                   or key == "st_" + self.paint_style)
         hover = rect.collidepoint(mx, my)

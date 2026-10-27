@@ -26,7 +26,7 @@ import shape_tools as st
 import architecture as arch
 
 from config import (CELL, BEV_DIR, MESH_DIR, SHAPES_JSON, FURNITURE,
-                    BEV_SCALE, WALL_M, DOOR_GAP, UNKNOWN, FREE, OCC)
+                    BEV_SCALE, WALL_M, DOOR_GAP, UNKNOWN, FREE, OCC, SLICE_Z, slice_dir)
 from utils import load_prop_shapes, bbox_corners
 
 try:
@@ -126,6 +126,8 @@ def scene_rows(map_data):
     # Edges: wall / door (open) / door_closed / window / glass / opening
     for kind, x0, y0, x1, y1 in arch.bev_edges(map_data):
         row(kind=kind, x=x0, y=y0, x2=x1, y2=y1)
+    for x0, y0, x1, y1 in arch.door_leaves(map_data):       # open leaves are obstacles
+        row(kind="door_leaf", x=x0, y=y0, x2=x1, y2=y1)
 
     # Furniture
     for f in furniture:
@@ -155,7 +157,9 @@ def write_csv(map_data, path):
 EDGE_KINDS = ("wall", "door", "door_closed", "window", "glass", "opening")
 GAP_KINDS = ("door", "opening")          # passable: drawn with the 0.94 m opening free
 SVG_EDGE_COLOR = {"wall": "#000000", "door": "#000000", "opening": "#000000",
-                  "door_closed": "#7a4a1d", "window": "#1d4e89", "glass": "#3aa0c8"}
+                  "door_closed": "#7a4a1d", "window": "#1d4e89", "glass": "#3aa0c8",
+                  "door_leaf": "#7a4a1d"}
+LEAF_M = 0.06                           # drawn thickness of an open door leaf (m)
 
 
 def _edge_segments(r):
@@ -203,12 +207,13 @@ def write_svg(map_data, path, scale=BEV_SCALE, margin_m=WALL_M):
         out.append('<rect x="%g" y="%g" width="%g" height="%g" fill="#fefefe"/>'
                    % (X(cx - CELL / 2), Y(cy - CELL / 2), CELL * scale, CELL * scale))
     for r in rows:
-        if r["kind"] not in EDGE_KINDS:
+        if r["kind"] not in EDGE_KINDS + ("door_leaf",):
             continue
+        width = max(1.0, LEAF_M * scale) if r["kind"] == "door_leaf" else wall_px
         for (ax, ay), (bx, by) in _edge_segments(r):
             out.append('<line x1="%g" y1="%g" x2="%g" y2="%g" stroke="%s" '
                        'stroke-width="%g" stroke-linecap="butt"/>'
-                       % (X(ax), Y(ay), X(bx), Y(by), SVG_EDGE_COLOR[r["kind"]], wall_px))
+                       % (X(ax), Y(ay), X(bx), Y(by), SVG_EDGE_COLOR[r["kind"]], width))
     for r in rows:
         if r["kind"] != "prop":
             continue
@@ -235,7 +240,14 @@ def write_svg(map_data, path, scale=BEV_SCALE, margin_m=WALL_M):
 # ----------------------------------------------------------------------------
 # Raster (PNG + PGM + YAML)
 # ----------------------------------------------------------------------------
-def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M):
+def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M, slice_z=None):
+    """Occupancy raster. PNG = editor orientation (row grows with +Y); the PGM + YAML pair
+    is flipped so ROS map_server's map frame == the USD world frame (x, y).
+
+    slice_z=(z0, z1): props are stamped with their height-sliced footprint
+    (tools/slice_footprints.py) instead of the editor shape -> what a robot of that
+    height really hits. Props without a slice mask fall back to their shape.
+    """
     if Image is None:
         raise RuntimeError("Pillow (PIL) is not installed - cannot export raster.")
     nx, ny, rows = scene_rows(map_data)
@@ -260,15 +272,19 @@ def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M):
         d.rectangle([X(cx - CELL / 2), Y(cy - CELL / 2),
                      X(cx + CELL / 2), Y(cy + CELL / 2)], fill=FREE)
     for r in rows:
-        if r["kind"] not in EDGE_KINDS:
+        if r["kind"] not in EDGE_KINDS + ("door_leaf",):
             continue
+        width = max(1, int(round(LEAF_M * scale))) if r["kind"] == "door_leaf" else wall_px
         for (ax, ay), (bx, by) in _edge_segments(r):
-            d.line([X(ax), Y(ay), X(bx), Y(by)], fill=OCC, width=wall_px)
+            d.line([X(ax), Y(ay), X(bx), Y(by)], fill=OCC, width=width)
+    sdir = slice_dir(slice_z) if slice_z else None
     for r in rows:
         if r["kind"] != "prop":
             continue
         cx, cy = float(r["x"]), float(r["y"])
         shape = r["shape"] or "bbox"
+        if sdir and _slice_stamp(sdir, r["name"], img, X(cx), Y(cy), float(r["yaw"]), scale):
+            continue
         if shape == "sphere":
             rr = float(r["r"]) * scale
             d.ellipse([X(cx) - rr, Y(cy) - rr, X(cx) + rr, Y(cy) + rr], fill=OCC)
@@ -282,21 +298,35 @@ def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M):
     img.save(path_png)
     stem, _ = os.path.splitext(path_png)
     pgm_path = stem + ".pgm"
-    img.save(pgm_path)
+    img.transpose(Image.FLIP_TOP_BOTTOM).save(pgm_path)       # ROS: first row = max y
     _write_yaml(stem + ".yaml", os.path.basename(pgm_path), 1.0 / scale, m, ny, scale)
     return W, H
 
 
-def _mesh_stamp(name, img, px, py, yaw, scale):
-    """Stamp the real footprint (mesh_shapes/<name>.png) onto img at (px,py)."""
+def _slice_stamp(sdir, name, img, px, py, yaw, scale):
+    """Stamp the height-sliced footprint slice_<z>/<name>.png (sidecar gives its mpp)."""
     if not name:
         return False
-    p = os.path.join(MESH_DIR, name + ".png")
+    p = os.path.join(sdir, name + ".png")
+    try:
+        with open(os.path.splitext(p)[0] + ".json", encoding="utf-8") as fh:
+            mpp = float(json.load(fh)["mpp"])
+    except Exception:
+        return False
+    return _mesh_stamp(name, img, px, py, yaw, scale, path=p, mpp=mpp)
+
+
+def _mesh_stamp(name, img, px, py, yaw, scale, path=None, mpp=None):
+    """Stamp a footprint mask (default mesh_shapes/<name>.png) onto img at (px,py)."""
+    if not name:
+        return False
+    p = path or os.path.join(MESH_DIR, name + ".png")
     if not os.path.isfile(p):
         return False
     try:
         src = Image.open(p).convert("L")
-        mpp = st.mesh_mpp(load_prop_shapes().get(name), src.width)
+        if mpp is None:
+            mpp = st.mesh_mpp(load_prop_shapes().get(name), src.width)
         stamp = src.resize((max(1, int(round(src.width * mpp * scale))),
                             max(1, int(round(src.height * mpp * scale)))), Image.NEAREST)
         stamp = stamp.rotate(-yaw, expand=True, fillcolor=255)
@@ -309,10 +339,12 @@ def _mesh_stamp(name, img, px, py, yaw, scale):
 
 
 def _write_yaml(path, image_name, resolution, margin_px, ny, scale):
+    # PGM is written flipped (first row = max y) -> map frame == USD world frame
     origin_x = -margin_px / scale
-    origin_y = -(ny * CELL) - margin_px / scale
+    origin_y = -margin_px / scale
+    _ = ny
     txt = (
-        "# BEV map for ROS map_server. Top-down image matches editor orientation (y-down).\n"
+        "# BEV map for ROS map_server. Map frame == the USD scene world frame (x, y).\n"
         "image: %s\n"
         "resolution: %.6f\n"
         "origin: [%.4f, %.4f, 0.0]\n"
@@ -344,6 +376,13 @@ def export_scene(map_data, stem="scene", scale=BEV_SCALE):
     n_rows = write_csv(map_data, csv_path)
     write_svg(map_data, svg_path, scale=scale)
     W, H = write_raster(map_data, png_path, scale=scale)
+    occ = None
+    if os.path.isdir(slice_dir(SLICE_Z)):        # height-sliced occupancy (robot body)
+        occ = os.path.join(scene_dir, "%s_occ_%.2f-%.2f.png" % (stem, SLICE_Z[0], SLICE_Z[1]))
+        write_raster(map_data, occ, scale=scale, slice_z=SLICE_Z)
+    import nav_export
+    nav = nav_export.write_nav(map_data, scene_dir, stem,  # robot spawn / waypoints
+                               os.path.splitext(os.path.basename(occ))[0] + ".yaml" if occ else None)
 
     nx, ny, rows = scene_rows(map_data)
     stats = {
@@ -351,7 +390,7 @@ def export_scene(map_data, stem="scene", scale=BEV_SCALE):
         "csv": csv_path, "svg": svg_path, "png": png_path,
         "pgm": os.path.join(scene_dir, stem + ".pgm"),
         "yaml": os.path.join(scene_dir, stem + ".yaml"),
-        "size": (W, H), "rows": n_rows,
+        "size": (W, H), "rows": n_rows, "occ": occ, "nav": nav,
         "floor": sum(1 for r in rows if r["kind"] == "floor"),
         "wall": sum(1 for r in rows if r["kind"] in EDGE_KINDS),
         "prop": sum(1 for r in rows if r["kind"] == "prop"),

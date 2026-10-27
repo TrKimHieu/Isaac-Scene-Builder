@@ -211,6 +211,24 @@ def bev_edges(map_data):
     return out
 
 
+DOOR_LEAF_W = 0.94          # SM_DoorB_Door leaf width (m)
+
+
+def door_leaves(map_data):
+    """[(x0, y0, x1, y1)] of every OPEN door leaf (hinge -> free edge): a real obstacle
+    standing in the room next to the opening."""
+    out = []
+    for kind, i, j, t in edges(map_data):
+        if t != EDGE_DOOR or not door_is_open(map_data, kind, i, j):
+            continue
+        p0, dname, _r, _l = edge_frame(kind, i, j)
+        u, yaw = DIRS[dname]
+        hinge = _add(_add(p0, u, CELL / 2.0), _rot(DOOR_HINGE, yaw))
+        tip = _add(hinge, _rot((0.0, -1.0), yaw + DOOR_OPEN_DEG), DOOR_LEAF_W)
+        out.append((hinge[0], hinge[1], tip[0], tip[1]))
+    return out
+
+
 def required_assets(map_data):
     """Every structural asset name the plan needs (for an existence check)."""
     names = {it["asset"] for it in plan_structure(map_data)}

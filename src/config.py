@@ -191,6 +191,14 @@ CAM_HEIGHT = 6.0
 # reception counters) are not clipped. Each render gets a <asset>.json sidecar
 # {"frame_m": ...}; meters/pixel = frame_m / image width.
 FRAME_STEPS = (3.0, 4.5, 6.0, 9.0, 12.0, 18.0)
+# Height-sliced occupancy (tools/slice_footprints.py): what a robot of this body height
+# actually hits - a low robot drives under table tops, glass-top tables block at the legs.
+SLICE_Z = (0.05, 0.50)  # m above the floor (default slab; others via --z)
+SLICE_MPP = 0.01        # m / pixel of slice masks
+
+
+def slice_dir(z=SLICE_Z):
+    return os.path.join(MESH_DIR, "slice_%.2f-%.2f" % (float(z[0]), float(z[1])))
 FRAME_MARGIN = 0.15     # m kept free around the footprint
 SETTLE_FRAMES = 16
 SHOW_FRAMES = 6
@@ -234,6 +242,8 @@ WALL_COL = (203, 213, 225)      # slate-300 (crisp walls)
 DOOR_COL = (52, 211, 153)       # emerald-400
 WINDOW_COL = (125, 211, 252)    # sky-300
 GLASS_COL = (103, 232, 249)     # cyan-300
+ROBOT_COL = (244, 114, 182)     # pink-400 (waypoints / route)
+SPAWN_COL = (74, 222, 128)      # green-400 (robot spawn)
 LIGHT_COL = (251, 191, 36)      # amber-400
 HOVER_EDGE = (129, 140, 248)    # indigo-400
 

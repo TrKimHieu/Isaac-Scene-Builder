@@ -18,10 +18,16 @@ import re
 import glob
 import math
 
-try:
-    from pxr import Usd, UsdGeom, UsdLux, UsdShade, Gf, Sdf
-except ImportError:   # editor / BEV / shape tools work without OpenUSD; writing .usd needs it
-    Usd = UsdGeom = UsdLux = UsdShade = Gf = Sdf = None
+from usd_runtime import pxr_available
+
+if pxr_available():   # installed pxr, or Isaac Sim's bundled OpenUSD (no Kit start needed)
+    from pxr import Usd, UsdGeom, UsdLux, UsdShade, UsdPhysics, Gf, Sdf
+    try:
+        from pxr import UsdSemantics
+    except ImportError:
+        UsdSemantics = None
+else:                 # editor / BEV / shape tools work without OpenUSD; writing .usd needs it
+    Usd = UsdGeom = UsdLux = UsdShade = UsdPhysics = UsdSemantics = Gf = Sdf = None
 
 from config import (PROJECT_ROOT, PROP_DIRS, PROPS_REL, CELL, WALL_H,
                     FLOOR, CEILING, WALL, WALL_DOOR, LIGHT_MESH, REQUIRED,
@@ -353,11 +359,113 @@ def add_light(stage, base_path, cx, cy, light_mesh=None, base_dir=None):
 # ----------------------------------------------------------------------------
 # Build
 # ----------------------------------------------------------------------------
-def build_scene(map_data, out_path):
-    """Dung Scene .usd (USDA text) tu map_data. Tra ve dict thong ke."""
+# ----------------------------------------------------------------------------
+# Simulation readiness: semantics, colliders, robot markers
+# ----------------------------------------------------------------------------
+STRUCT_CLASS = {"floor": "floor", "ceiling": "ceiling", "wall": "wall", "cap": "wall",
+                "door": "door", "window": "window", "glass": "glass_wall"}
+_OFFICE_CLASS = {"Desks": "table", "Chairs": "seating", "Cabinets": "storage",
+                 "Machines": "appliance", "Decor": "decor"}
+
+
+def semantic_class(asset):
+    """Semantic class of a furniture asset: library category, Office palette category,
+    else 'furniture'."""
+    lib = load_library().get(asset)
+    if lib and lib.get("category"):
+        return lib["category"]
+    for cat, names in FURNITURE_CATEGORIES.items():
+        if asset in names:
+            return _OFFICE_CLASS.get(cat, "furniture")
+    return "furniture"
+
+
+def set_semantic(prim, cls):
+    """Replicator semantic label (taxonomy 'class') on prim (inherited by its subtree)."""
+    if UsdSemantics is None or not cls:
+        return
+    api = UsdSemantics.LabelsAPI.Apply(prim, "class")
+    api.CreateLabelsAttr().Set([cls])
+
+
+def add_colliders(stage, root_prim):
+    """Static triangle-mesh colliders on every mesh under root_prim (a referenced prop).
+
+    Instanced sub-trees are de-instanced first (instance proxies cannot be edited).
+    Returns the number of collider meshes.
+    """
+    changed = True
+    while changed:
+        changed = False
+        for pr in Usd.PrimRange(root_prim):
+            if pr.IsInstance():
+                pr.SetInstanceable(False)
+                changed = True
+                break
+    n = 0
+    for pr in Usd.PrimRange(root_prim):
+        if pr.IsA(UsdGeom.Mesh):
+            UsdPhysics.CollisionAPI.Apply(pr)
+            UsdPhysics.MeshCollisionAPI.Apply(pr).CreateApproximationAttr(UsdPhysics.Tokens.none)
+            n += 1
+    return n
+
+
+def add_robot_markers(stage, robot):
+    """/World/Robot/Spawn + /World/Robot/Waypoints/WP_xx (guide-purpose markers)."""
+    if not robot:
+        return 0
+    UsdGeom.Scope.Define(stage, "/World/Robot")
+    n = 0
+    sp = robot.get("spawn")
+    if sp:
+        xf = UsdGeom.Xform.Define(stage, "/World/Robot/Spawn")
+        xf.AddTranslateOp().Set(Gf.Vec3d(float(sp["x"]), float(sp["y"]), 0.0))
+        xf.AddRotateZOp().Set(float(sp.get("yaw", 0.0)))
+        cone = UsdGeom.Cone.Define(stage, "/World/Robot/Spawn/Marker")
+        cone.CreateRadiusAttr(0.2)
+        cone.CreateHeightAttr(0.4)
+        cone.CreateAxisAttr("X")                     # points along the robot heading
+        cone.CreatePurposeAttr(UsdGeom.Tokens.guide)
+        xf.GetPrim().SetCustomDataByKey("robot:role", "spawn")
+        n += 1
+    UsdGeom.Scope.Define(stage, "/World/Robot/Waypoints")
+    for k, wp in enumerate(robot.get("waypoints") or []):
+        path = "/World/Robot/Waypoints/WP_%02d" % k
+        xf = UsdGeom.Xform.Define(stage, path)
+        xf.AddTranslateOp().Set(Gf.Vec3d(float(wp[0]), float(wp[1]), 0.0))
+        s = UsdGeom.Sphere.Define(stage, path + "/Marker")
+        s.CreateRadiusAttr(0.12)
+        s.CreatePurposeAttr(UsdGeom.Tokens.guide)
+        xf.GetPrim().SetCustomDataByKey("robot:waypoint_index", k)
+        n += 1
+    return n
+
+
+def _new_stage(out_path):
+    """File-backed USDA stage at out_path (relative references resolve while building)."""
+    out_dir = os.path.dirname(os.path.abspath(out_path))
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    layer = Sdf.Layer.Find(out_path)
+    if layer:
+        layer.Clear()
+    else:
+        layer = Sdf.Layer.CreateNew(out_path, args={"format": "usda"})
+    return Usd.Stage.Open(layer)
+
+
+def build_scene(map_data, out_path, physics=True, semantics=True):
+    """Dung Scene .usd (USDA text) tu map_data. Tra ve dict thong ke.
+
+    physics: PhysicsScene + static triangle-mesh colliders on floors, walls, doors,
+             windows, glass and furniture (ceilings / lights excluded).
+    semantics: UsdSemantics class labels (floor, wall, door, window, glass_wall, ceiling,
+             furniture category) for Replicator segmentation / bounding boxes.
+    """
     if Usd is None:
-        raise RuntimeError("OpenUSD (pxr) is not available in this Python - install usd-core "
-                           "or run with Isaac Sim's python to build .usd scenes")
+        raise RuntimeError("OpenUSD (pxr) is not available: install Isaac Sim (C:\\isaacsim "
+                           "or $ISAACSIM) or usd-core to build .usd scenes")
     import architecture as arch
     struct = dict(map_data.get("structure") or {})
     light_p = struct.get("light", LIGHT_MESH)
@@ -368,16 +476,21 @@ def build_scene(map_data, out_path):
     nx, ny, cells, vedges, hedges, furniture = parse_map(map_data)
 
     out_dir = os.path.dirname(os.path.abspath(out_path))   # asset paths relative to here
-    stage = Usd.Stage.CreateInMemory()
+    stage = _new_stage(out_path)
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(stage, 1.0)
     world = UsdGeom.Xform.Define(stage, "/World")
     stage.SetDefaultPrim(world.GetPrim())
     for scope in ("Structure", "Doors", "Lights", "Furniture", "Looks"):
         UsdGeom.Scope.Define(stage, "/World/" + scope)
+    if physics:
+        scene = UsdPhysics.Scene.Define(stage, "/World/PhysicsScene")
+        scene.CreateGravityDirectionAttr(Gf.Vec3f(0.0, 0.0, -1.0))
+        scene.CreateGravityMagnitudeAttr(9.81)
 
     stats = {"floor": 0, "ceiling": 0, "light": 0, "wall": 0, "door": 0, "window": 0,
-             "glass": 0, "cap": 0, "furniture": 0, "skipped": [], "styles": {}}
+             "glass": 0, "cap": 0, "furniture": 0, "skipped": [], "styles": {},
+             "colliders": 0, "labeled": 0, "robot_markers": 0}
     looks = {}
 
     # Shell: floors, ceilings, wall panels, caps, doors, windows, glass
@@ -385,12 +498,17 @@ def build_scene(map_data, out_path):
         parent = "/World/Doors/" if it["kind"] == "door" else "/World/Structure/"
         xf = place(stage, parent + it["name"], it["asset"], it["pos"], rot_z=it["yaw"],
                    base_dir=out_dir)
+        geo = stage.GetPrimAtPath(xf.GetPath().AppendChild("Geo"))
         mat = _style_material(stage, looks, it["style"], it["slot"], out_dir)
         if mat is not None:
-            geo = stage.GetPrimAtPath(xf.GetPath().AppendChild("Geo"))
             UsdShade.MaterialBindingAPI.Apply(geo).Bind(
                 mat, UsdShade.Tokens.strongerThanDescendants)
         k = it["kind"]
+        if semantics:
+            set_semantic(xf.GetPrim(), STRUCT_CLASS.get(k))
+            stats["labeled"] += 1
+        if physics and k != "ceiling":
+            stats["colliders"] += add_colliders(stage, geo)
         if k in stats:
             stats[k] += 1
         if it["style"] and it["slot"] == "floor":
@@ -409,15 +527,17 @@ def build_scene(map_data, out_path):
             stats["skipped"].append(name)
             continue
         path = "/World/Furniture/%s_%d" % (safe_name(name), idx)
-        place(stage, path, name, (float(f["x"]), float(f["y"]), 0.0),
-              rot_z=float(f.get("yaw", 0.0)), base_dir=out_dir)
+        xf = place(stage, path, name, (float(f["x"]), float(f["y"]), 0.0),
+                   rot_z=float(f.get("yaw", 0.0)), base_dir=out_dir)
+        if semantics:
+            set_semantic(xf.GetPrim(), semantic_class(name))
+            stats["labeled"] += 1
+        if physics:
+            stats["colliders"] += add_colliders(stage, stage.GetPrimAtPath(path + "/Geo"))
         stats["furniture"] += 1
 
-    if out_dir and not os.path.isdir(out_dir):
-        os.makedirs(out_dir)
-    text = stage.GetRootLayer().ExportToString()
-    with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(text)
+    stats["robot_markers"] = add_robot_markers(stage, map_data.get("robot"))
+    stage.GetRootLayer().Save()
     stats["out"] = out_path
     return stats
 

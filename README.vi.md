@@ -94,6 +94,22 @@ Tường được dựng như scene office của NVIDIA: hai tấm panel quay l�
 style của phòng nó quay vào), có bịt đầu tường và góc; cửa có khung + cánh thật (mặc định mở),
 cửa sổ và tường kính là module 3 m. Ví dụ: `data/maps/demo_architecture.json`.
 
+**Đầu ra sẵn sàng cho mô phỏng**
+- `.usd`: `PhysicsScene` + collider tĩnh cho sàn, tường, cửa, cửa sổ, kính và mọi mesh nội thất;
+  nhãn `UsdSemantics` theo class (`floor`, `wall`, `door`, `window`, `glass_wall`, `ceiling`,
+  loại nội thất như `table`, `seating`, `medical`) cho segmentation / bounding box của
+  Replicator; điểm xuất phát + waypoint của robot là các marker `/World/Robot`.
+- **Công cụ Robot (5):** click = waypoint, Shift+click = điểm xuất phát, lăn chuột = hướng,
+  chuột phải = xoá.
+- **Occupancy theo độ cao:** `python tools/slice_footprints.py [--z 0.05 0.50]` cắt mesh thật của
+  từng prop ở độ cao thân robot; xuất BEV sẽ có thêm `<stem>_occ_<z0>-<z1>.pgm/.yaml` (robot thấp
+  chui qua gầm bàn; bàn kính chỉ chặn ở chân). Cánh cửa mở là vật cản trên cả hai bản đồ.
+- **ROS 2 / Nav2:** hệ toạ độ map của PGM + YAML trùng hệ toạ độ thế giới USD; xuất kèm
+  `<stem>_nav.yaml` (vị trí đầu + waypoint) và `follow_waypoints.py` (nav2_simple_commander).
+- OpenUSD được nạp từ bộ của Isaac Sim (`C:\isaacsim` hoặc `$ISAACSIM`) khi chưa cài `pxr`, nên
+  editor ghi được `.usd` bằng Python thường. Segmentation của Replicator bỏ qua kính trong suốt
+  trừ khi bật translucency trong thiết lập của nó.
+
 **3 · Xuất sản phẩm — một phím**
 ```text
 S  →  output/scenes/sceneN.usd     # scene 3D cho Isaac Sim
@@ -106,7 +122,7 @@ B  →  output/bev/sceneN/           # bản đồ BEV cho robot (5 định dạ
 
 | Phím | Tác dụng | Phím | Tác dụng |
 |:---:|---|:---:|---|
-| `1` `2` `3` `4` | Floor / Wall / Furniture / Style | `Ctrl+Z` `Ctrl+Y` | Hoàn tác / Phục hồi |
+| `1`–`5` | Floor / Wall / Furniture / Style / Robot | `Ctrl+Z` `Ctrl+Y` | Hoàn tác / Phục hồi |
 | `O` | Mở / đóng cửa dưới con trỏ | `V` | Mesh: mask / ảnh màu |
 | `Tab` | Đổi công cụ | `Ctrl`+lăn | Zoom theo con trỏ |
 | `R` | Xoay nội thất 5° | Giữ nút giữa | Kéo tầm nhìn (pan) |
