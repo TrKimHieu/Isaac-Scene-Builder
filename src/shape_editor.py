@@ -6,7 +6,8 @@ Usage:
     python src/shape_editor.py [render_dir]
 
 Reads renders from: output/mesh_shapes/renders/*.png by default
-(produced by isaac_bev_capture.py - framed exactly to one 3x3 m cell).
+(produced by isaac_bev_capture.py - square frame centered on the prop, frame_m from the
+<asset>.json sidecar; legacy renders = one 3x3 m cell).
 
 Controls:
   BOX    (1): drag to draw the bounding rectangle -> auto W,H (m)
@@ -22,7 +23,7 @@ import sys
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
-from config import (CELL, RENDER_DIR, C0, MESH_MARK, BG, PANEL_BG, TEXT, TEXT_DIM,
+from config import (CELL, RENDER_DIR, COLOR_DIR, C0, MESH_MARK, BG, PANEL_BG, TEXT, TEXT_DIM,
                     BTN, BTN_HOVER, BTN_ACTIVE, ACCENT, GRID_LINE, SECTION_LINE)
 import bev_export as bev
 import shape_tools as st
@@ -81,13 +82,14 @@ class ShapeEditor:
         self.idx = i % len(self.files)
         path = os.path.join(self.render_dir, self.files[self.idx])
         self.img = st.Image.open(path).convert("RGB")
+        self.frame_m = st.render_frame_m(path)
         self.box = None
         self.circle = None
         self.drag_from = None
         self._make_tex()
-        self.msg = "Image: %s (%dx%d px, %.3f m/px)" % (
-            self.files[self.idx], self.img.width, self.img.height,
-            st.meters_per_pixel(self.img.width, CELL))
+        self.msg = "Image: %s (%dx%d px, frame %.1f m, %.4f m/px)" % (
+            self.files[self.idx], self.img.width, self.img.height, self.frame_m,
+            st.meters_per_pixel(self.img.width, self.frame_m))
 
     def _make_tex(self):
         mode = self.img.mode
@@ -137,10 +139,10 @@ class ShapeEditor:
             return None
         iw = self.img.width
         if self.mode == "box" and self.box:
-            w, h = st.bbox_to_wh(self.box, iw, CELL)
+            w, h = st.bbox_to_wh(self.box, iw, self.frame_m)
             return "bbox", w, h, max(w, h) / 2
         if self.mode == "circle" and self.circle:
-            r = st.radius_to_m(self.circle[2], iw, CELL)
+            r = st.radius_to_m(self.circle[2], iw, self.frame_m)
             return "sphere", 2 * r, 2 * r, r
         return None
 
@@ -155,12 +157,20 @@ class ShapeEditor:
             x0, y0, x1, y1 = [int(round(v)) for v in self.box]
             x0, y0 = max(0, x0), max(0, y0)
             mask = st.cut_shape(self.img, (x0, y0, x1, y1))
+            color = st.color_cutout(self.img, (x0, y0, x1, y1))
         else:
             cx, cy, rad = self.circle
             mask = st.circle_mask_shape(self.img, cx, cy, rad)
+            x0, y0 = max(0, int(cx - rad)), max(0, int(cy - rad))
+            color = st.color_cutout(self.img, (x0, y0, x0 + mask.width, y0 + mask.height))
+            color.putalpha(st.Image.eval(mask, lambda v: 255 if v < 128 else 0))
         st.save_shape_png(mask, self.asset, mesh_dir)
+        os.makedirs(COLOR_DIR, exist_ok=True)
+        color.save(os.path.join(COLOR_DIR, self.asset + ".png"))
         rel = "mesh_shapes/%s.png" % self.asset
-        bev.save_prop_shape(self.asset, shape, w, h, r, mesh=rel)
+        bev.save_prop_shape(self.asset, shape, w, h, r, mesh=rel,
+                            mesh_mpp=st.meters_per_pixel(self.img.width, self.frame_m),
+                            color="mesh_shapes/color/%s.png" % self.asset)
         self.msg = "Saved %s.png + props_shapes.json | %s w=%.2f h=%.2f r=%.2f" % (
             self.asset, shape, w, h, r)
 

@@ -103,3 +103,38 @@ class TestNextScenePath:
             open(os.path.join(td, "test3.usd"), "w").close()
             p = sb.next_scene_path(directory=td, stem="test")
             assert "test2.usd" in p
+
+
+class TestAssetPath:
+    """Scene files live in output/scenes/: references must be relative to that folder."""
+
+    def _fake(self, monkeypatch, sb, rel):
+        from config import PROJECT_ROOT
+        p = os.path.join(PROJECT_ROOT, *rel.split("/"))
+        monkeypatch.setattr(sb, "asset_abs", lambda name: p)
+        return PROJECT_ROOT
+
+    def test_relative_to_scene_dir(self, monkeypatch):
+        import scene_builder as sb
+        root = self._fake(monkeypatch, sb, "assets/office/Props/SM_Chair.usd")
+        got = sb.asset_path("SM_Chair", os.path.join(root, "output", "scenes"))
+        assert got == "../../assets/office/Props/SM_Chair.usd"
+
+    def test_library_asset(self, monkeypatch):
+        import scene_builder as sb
+        root = self._fake(monkeypatch, sb, "assets/library/nvidia/ArchVis/X/Boat.usd")
+        got = sb.asset_path("AV_Boat", os.path.join(root, "output", "scenes"))
+        assert got == "../../assets/library/nvidia/ArchVis/X/Boat.usd"
+
+    def test_resolves_back_to_file(self, monkeypatch):
+        import scene_builder as sb
+        root = self._fake(monkeypatch, sb, "assets/office/Props/SM_Chair.usd")
+        scene_dir = os.path.join(root, "output", "scenes")
+        ref = sb.asset_path("SM_Chair", scene_dir)
+        assert os.path.normpath(os.path.join(scene_dir, ref)) == \
+            os.path.normpath(os.path.join(root, "assets", "office", "Props", "SM_Chair.usd"))
+
+    def test_scene_at_project_root(self, monkeypatch):
+        import scene_builder as sb
+        root = self._fake(monkeypatch, sb, "assets/office/Props/SM_Chair.usd")
+        assert sb.asset_path("SM_Chair", root) == "./assets/office/Props/SM_Chair.usd"

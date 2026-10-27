@@ -29,6 +29,32 @@ def load_prop_shapes():
         return {}
 
 
+_LIBRARY = None
+
+
+def load_library(reload=False):
+    """Curated asset library (data/asset_manifest.json) -> {id: entry}.
+
+    Only entries whose root file is on disk are returned; each entry gets an 'abs' path.
+    """
+    global _LIBRARY
+    if _LIBRARY is not None and not reload:
+        return _LIBRARY
+    from config import ASSET_MANIFEST, LIBRARY_DIR
+    out = {}
+    try:
+        with open(ASSET_MANIFEST, encoding="utf-8") as fh:
+            assets = json.load(fh).get("assets", [])
+    except Exception:
+        assets = []
+    for a in assets:
+        p = os.path.join(LIBRARY_DIR, *a["root"].split("/"))
+        if os.path.isfile(p):
+            out[a["id"]] = dict(a, abs=p)
+    _LIBRARY = out
+    return out
+
+
 def save_prop_shapes(data):
     """Write the full props_shapes dict to disk."""
     with open(SHAPES_JSON, "w", encoding="utf-8") as fh:

@@ -84,8 +84,15 @@ python src/scene_editor.py
 ```text
 1  Floor      → click / kéo tô sàn
 W             → tự sinh tường bao quanh
+2  Wall       → click cạnh để đổi tường / cửa / cửa sổ / kính / lối mở,
+                hoặc chọn EDGE TYPE ở panel rồi kéo dọc hàng;  O = mở/đóng cửa
+4  Style      → tô style phòng (Office / Hospital / Warehouse / Home) lên sàn
 3  Furniture  → chọn ở palette, click đặt  (giữ trái + kéo để di chuyển)
 ```
+
+Tường được dựng như scene office của NVIDIA: hai tấm panel quay lưng vào nhau (mỗi mặt mang
+style của phòng nó quay vào), có bịt đầu tường và góc; cửa có khung + cánh thật (mặc định mở),
+cửa sổ và tường kính là module 3 m. Ví dụ: `data/maps/demo_architecture.json`.
 
 **3 · Xuất sản phẩm — một phím**
 ```text
@@ -99,7 +106,8 @@ B  →  output/bev/sceneN/           # bản đồ BEV cho robot (5 định dạ
 
 | Phím | Tác dụng | Phím | Tác dụng |
 |:---:|---|:---:|---|
-| `1` `2` `3` | Floor / Wall / Furniture | `Ctrl+Z` `Ctrl+Y` | Hoàn tác / Phục hồi |
+| `1` `2` `3` `4` | Floor / Wall / Furniture / Style | `Ctrl+Z` `Ctrl+Y` | Hoàn tác / Phục hồi |
+| `O` | Mở / đóng cửa dưới con trỏ | `V` | Mesh: mask / ảnh màu |
 | `Tab` | Đổi công cụ | `Ctrl`+lăn | Zoom theo con trỏ |
 | `R` | Xoay nội thất 5° | Giữ nút giữa | Kéo tầm nhìn (pan) |
 | `W` | Tự sinh tường bao | `S` / `B` | Xuất USD / BEV |
@@ -144,6 +152,9 @@ isaacsim\python.bat src/isaac_bev_capture.py <Tên>   # 1. chụp ảnh BEV
 python src/build_furniture_shapes.py                 # 2. đo W/H/R + cắt mesh
 python src/scene_editor.py                            # 3. có ngay trong palette
 ```
+
+**Thư viện asset (~260 model tuyển chọn, văn phòng · nhà ở · bệnh viện · kho):**
+`python tools/asset_library.py fetch` tải về `assets/library/` (NVIDIA ArchVis / DigitalTwin / Isaac + Poly Haven CC0).
 
 Nguồn tải asset tương thích (NVIDIA Omniverse / SimReady) và chi tiết: xem [`docs/ASSETS.md`](docs/ASSETS.md).
 

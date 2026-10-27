@@ -1,395 +1,507 @@
 {
   "SM_SecretaryDeskA": {
     "shape": "bbox",
-    "w": 0.797,
-    "h": 2.801,
-    "r": 1.454,
-    "mesh": "mesh_shapes/SM_SecretaryDeskA.png"
+    "w": 0.8,
+    "h": 2.795,
+    "r": 1.451,
+    "mesh": "mesh_shapes/SM_SecretaryDeskA.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/SM_SecretaryDeskA.png"
   },
   "SM_SecretaryDeskB": {
     "shape": "bbox",
     "w": 0.797,
     "h": 1.198,
     "r": 1.261,
-    "mesh": "mesh_shapes/SM_SecretaryDeskB.png"
+    "mesh": "mesh_shapes/SM_SecretaryDeskB.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_SecretaryDeskB.png"
   },
   "SM_InformationDesk_A": {
     "shape": "bbox",
     "w": 0.337,
     "h": 0.264,
     "r": 0.213,
-    "mesh": "mesh_shapes/SM_InformationDesk_A.png"
+    "mesh": "mesh_shapes/SM_InformationDesk_A.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_InformationDesk_A.png"
   },
   "SM_InformationDesk_B": {
     "shape": "bbox",
-    "w": 0.337,
+    "w": 0.34,
     "h": 0.264,
     "r": 0.213,
-    "mesh": "mesh_shapes/SM_InformationDesk_B.png"
+    "mesh": "mesh_shapes/SM_InformationDesk_B.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_InformationDesk_B.png"
   },
   "SM_ChairOffice": {
     "shape": "bbox",
     "w": 0.63,
-    "h": 0.645,
+    "h": 0.647,
     "r": 0.427,
-    "mesh": "mesh_shapes/SM_ChairOffice.png"
+    "mesh": "mesh_shapes/SM_ChairOffice.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ChairOffice.png"
   },
   "SM_ChairOffice_A": {
     "shape": "bbox",
     "w": 0.683,
     "h": 0.577,
     "r": 0.466,
-    "mesh": "mesh_shapes/SM_ChairOffice_A.png"
+    "mesh": "mesh_shapes/SM_ChairOffice_A.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ChairOffice_A.png"
   },
   "SM_Armchair": {
     "shape": "bbox",
     "w": 0.82,
     "h": 1.037,
     "r": 0.659,
-    "mesh": "mesh_shapes/SM_Armchair.png"
+    "mesh": "mesh_shapes/SM_Armchair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Armchair.png"
   },
   "SM_Sofa": {
     "shape": "bbox",
     "w": 0.82,
     "h": 2.039,
-    "r": 1.097,
-    "mesh": "mesh_shapes/SM_Sofa.png"
+    "r": 1.096,
+    "mesh": "mesh_shapes/SM_Sofa.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Sofa.png"
   },
   "SM_Chair": {
     "shape": "bbox",
     "w": 0.583,
     "h": 0.598,
-    "r": 0.429,
-    "mesh": "mesh_shapes/SM_Chair.png"
+    "r": 0.427,
+    "mesh": "mesh_shapes/SM_Chair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Chair.png"
   },
   "SM_FileCabinet_01": {
     "shape": "bbox",
     "w": 0.703,
     "h": 0.393,
     "r": 0.386,
-    "mesh": "mesh_shapes/SM_FileCabinet_01.png"
+    "mesh": "mesh_shapes/SM_FileCabinet_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_FileCabinet_01.png"
   },
   "SM_FileCabinet_02": {
     "shape": "bbox",
     "w": 0.703,
     "h": 0.393,
     "r": 0.386,
-    "mesh": "mesh_shapes/SM_FileCabinet_02.png"
+    "mesh": "mesh_shapes/SM_FileCabinet_02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_FileCabinet_02.png"
   },
   "SM_FileCabinet_03": {
     "shape": "bbox",
     "w": 0.841,
-    "h": 0.39,
+    "h": 0.393,
     "r": 0.505,
-    "mesh": "mesh_shapes/SM_FileCabinet_03.png"
+    "mesh": "mesh_shapes/SM_FileCabinet_03.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_FileCabinet_03.png"
   },
   "SM_BookcaseA": {
     "shape": "bbox",
     "w": 0.416,
     "h": 1.84,
     "r": 0.94,
-    "mesh": "mesh_shapes/SM_BookcaseA.png"
+    "mesh": "mesh_shapes/SM_BookcaseA.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_BookcaseA.png"
   },
   "SM_Rack": {
     "shape": "bbox",
     "w": 0.609,
     "h": 1.219,
-    "r": 0.678,
-    "mesh": "mesh_shapes/SM_Rack.png"
+    "r": 0.679,
+    "mesh": "mesh_shapes/SM_Rack.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Rack.png"
   },
   "SM_RackA": {
     "shape": "bbox",
     "w": 0.609,
     "h": 1.219,
     "r": 0.678,
-    "mesh": "mesh_shapes/SM_RackA.png"
+    "mesh": "mesh_shapes/SM_RackA.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_RackA.png"
   },
   "SM_TrashCan": {
     "shape": "bbox",
     "w": 0.299,
     "h": 0.299,
     "r": 0.149,
-    "mesh": "mesh_shapes/SM_TrashCan.png"
+    "mesh": "mesh_shapes/SM_TrashCan.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TrashCan.png"
   },
   "SM_TrashCan_01": {
     "shape": "bbox",
     "w": 0.252,
     "h": 0.252,
     "r": 0.168,
-    "mesh": "mesh_shapes/SM_TrashCan_01.png"
+    "mesh": "mesh_shapes/SM_TrashCan_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TrashCan_01.png"
   },
   "SM_DrinksMachine": {
     "shape": "bbox",
     "w": 0.844,
     "h": 1.213,
     "r": 1.037,
-    "mesh": "mesh_shapes/SM_DrinksMachine.png"
+    "mesh": "mesh_shapes/SM_DrinksMachine.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_DrinksMachine.png"
   },
   "SM_Printer": {
     "shape": "bbox",
     "w": 0.46,
     "h": 0.565,
     "r": 0.349,
-    "mesh": "mesh_shapes/SM_Printer.png"
+    "mesh": "mesh_shapes/SM_Printer.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Printer.png"
   },
   "SM_Plant01": {
     "shape": "bbox",
     "w": 1.269,
-    "h": 1.438,
-    "r": 0.743,
-    "mesh": "mesh_shapes/SM_Plant01.png"
+    "h": 1.433,
+    "r": 0.741,
+    "mesh": "mesh_shapes/SM_Plant01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Plant01.png"
   },
   "SM_Plant02": {
     "shape": "bbox",
-    "w": 0.832,
+    "w": 0.829,
     "h": 0.94,
-    "r": 0.538,
-    "mesh": "mesh_shapes/SM_Plant02.png"
+    "r": 0.536,
+    "mesh": "mesh_shapes/SM_Plant02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Plant02.png"
   },
   "SM_Plant03": {
     "shape": "bbox",
-    "w": 0.768,
+    "w": 0.765,
     "h": 0.812,
     "r": 0.499,
-    "mesh": "mesh_shapes/SM_Plant03.png"
+    "mesh": "mesh_shapes/SM_Plant03.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Plant03.png"
   },
   "SM_TableA": {
     "shape": "bbox",
     "w": 1.749,
-    "h": 2.455,
-    "r": 1.504,
-    "mesh": "mesh_shapes/SM_TableA.png"
+    "h": 2.461,
+    "r": 1.506,
+    "mesh": "mesh_shapes/SM_TableA.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableA.png"
   },
   "SM_TableB": {
     "shape": "bbox",
     "w": 0.8,
-    "h": 2.801,
-    "r": 1.454,
-    "mesh": "mesh_shapes/SM_TableB.png"
+    "h": 2.795,
+    "r": 1.451,
+    "mesh": "mesh_shapes/SM_TableB.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/SM_TableB.png"
   },
   "SM_TableC": {
     "shape": "bbox",
     "w": 0.598,
     "h": 1.201,
     "r": 0.669,
-    "mesh": "mesh_shapes/SM_TableC.png"
+    "mesh": "mesh_shapes/SM_TableC.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableC.png"
   },
   "SM_TableD": {
     "shape": "bbox",
     "w": 0.896,
     "h": 1.995,
-    "r": 1.09,
-    "mesh": "mesh_shapes/SM_TableD.png"
+    "r": 1.092,
+    "mesh": "mesh_shapes/SM_TableD.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableD.png"
   },
   "SM_TableD2": {
     "shape": "bbox",
     "w": 0.896,
     "h": 1.33,
-    "r": 1.399,
-    "mesh": "mesh_shapes/SM_TableD2.png"
+    "r": 1.402,
+    "mesh": "mesh_shapes/SM_TableD2.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableD2.png"
   },
   "SM_TableCoffee": {
     "shape": "bbox",
     "w": 0.498,
-    "h": 0.885,
-    "r": 0.507,
-    "mesh": "mesh_shapes/SM_TableCoffee.png"
+    "h": 0.891,
+    "r": 0.509,
+    "mesh": "mesh_shapes/SM_TableCoffee.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableCoffee.png"
   },
   "SM_TableRound_module": {
     "shape": "bbox",
     "w": 1.248,
     "h": 1.248,
     "r": 0.88,
-    "mesh": "mesh_shapes/SM_TableRound_module.png"
+    "mesh": "mesh_shapes/SM_TableRound_module.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableRound_module.png"
   },
   "SM_TableWorkSecurity": {
     "shape": "bbox",
-    "w": 0.8,
+    "w": 0.797,
     "h": 1.699,
     "r": 0.936,
-    "mesh": "mesh_shapes/SM_TableWorkSecurity.png"
+    "mesh": "mesh_shapes/SM_TableWorkSecurity.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableWorkSecurity.png"
   },
   "SM_TableWorkingDouble": {
     "shape": "bbox",
     "w": 1.699,
     "h": 1.699,
-    "r": 1.199,
-    "mesh": "mesh_shapes/SM_TableWorkingDouble.png"
+    "r": 1.197,
+    "mesh": "mesh_shapes/SM_TableWorkingDouble.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_TableWorkingDouble.png"
   },
   "SM_StandTableWork": {
     "shape": "bbox",
     "w": 0.469,
     "h": 0.398,
-    "r": 0.306,
-    "mesh": "mesh_shapes/SM_StandTableWork.png"
+    "r": 0.304,
+    "mesh": "mesh_shapes/SM_StandTableWork.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_StandTableWork.png"
   },
   "SM_ReceptionTableStraight": {
     "shape": "bbox",
     "w": 0.858,
     "h": 1.998,
     "r": 1.261,
-    "mesh": "mesh_shapes/SM_ReceptionTableStraight.png"
+    "mesh": "mesh_shapes/SM_ReceptionTableStraight.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ReceptionTableStraight.png"
   },
   "SM_ReceptionTableCornerOutside": {
     "shape": "bbox",
     "w": 2.08,
     "h": 2.08,
     "r": 1.47,
-    "mesh": "mesh_shapes/SM_ReceptionTableCornerOutside.png"
+    "mesh": "mesh_shapes/SM_ReceptionTableCornerOutside.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ReceptionTableCornerOutside.png"
   },
   "SM_StandForPapers": {
     "shape": "bbox",
     "w": 0.246,
     "h": 0.316,
     "r": 0.198,
-    "mesh": "mesh_shapes/SM_StandForPapers.png"
+    "mesh": "mesh_shapes/SM_StandForPapers.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_StandForPapers.png"
   },
   "SM_Recliner": {
     "shape": "bbox",
     "w": 0.662,
     "h": 0.645,
-    "r": 0.46,
-    "mesh": "mesh_shapes/SM_Recliner.png"
+    "r": 0.458,
+    "mesh": "mesh_shapes/SM_Recliner.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Recliner.png"
   },
   "SM_Cupboard": {
     "shape": "bbox",
-    "w": 0.416,
+    "w": 0.419,
     "h": 1.84,
     "r": 0.949,
-    "mesh": "mesh_shapes/SM_Cupboard.png"
+    "mesh": "mesh_shapes/SM_Cupboard.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Cupboard.png"
   },
   "SM_PaperCase_Case": {
     "shape": "bbox",
     "w": 0.448,
     "h": 1.904,
-    "r": 1.044,
-    "mesh": "mesh_shapes/SM_PaperCase_Case.png"
+    "r": 1.043,
+    "mesh": "mesh_shapes/SM_PaperCase_Case.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_PaperCase_Case.png"
   },
   "SM_ReceptionClosets": {
     "shape": "bbox",
     "w": 0.498,
-    "h": 2.602,
-    "r": 1.388,
-    "mesh": "mesh_shapes/SM_ReceptionClosets.png"
+    "h": 2.599,
+    "r": 1.391,
+    "mesh": "mesh_shapes/SM_ReceptionClosets.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ReceptionClosets.png"
   },
   "SM_Rack1m": {
     "shape": "bbox",
     "w": 0.609,
     "h": 1.219,
     "r": 0.678,
-    "mesh": "mesh_shapes/SM_Rack1m.png"
+    "mesh": "mesh_shapes/SM_Rack1m.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Rack1m.png"
   },
   "SM_Reception": {
     "shape": "bbox",
-    "w": 0.601,
-    "h": 2.982,
-    "r": 1.619,
-    "mesh": "mesh_shapes/SM_Reception.png"
+    "w": 0.598,
+    "h": 2.979,
+    "r": 1.617,
+    "mesh": "mesh_shapes/SM_Reception.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/SM_Reception.png"
   },
   "SM_ReceptionStandA": {
     "shape": "bbox",
     "w": 0.688,
     "h": 0.357,
-    "r": 0.387,
-    "mesh": "mesh_shapes/SM_ReceptionStandA.png"
+    "r": 0.385,
+    "mesh": "mesh_shapes/SM_ReceptionStandA.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ReceptionStandA.png"
   },
   "SM_ReceptionStandB": {
     "shape": "bbox",
     "w": 0.873,
     "h": 0.258,
     "r": 0.79,
-    "mesh": "mesh_shapes/SM_ReceptionStandB.png"
+    "mesh": "mesh_shapes/SM_ReceptionStandB.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ReceptionStandB.png"
   },
   "SM_WaterCooler": {
     "shape": "bbox",
     "w": 0.34,
     "h": 0.419,
     "r": 0.25,
-    "mesh": "mesh_shapes/SM_WaterCooler.png"
+    "mesh": "mesh_shapes/SM_WaterCooler.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_WaterCooler.png"
   },
   "SM_Toilet": {
     "shape": "bbox",
-    "w": 0.56,
+    "w": 0.557,
     "h": 0.357,
-    "r": 0.558,
-    "mesh": "mesh_shapes/SM_Toilet.png"
+    "r": 0.556,
+    "mesh": "mesh_shapes/SM_Toilet.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Toilet.png"
   },
   "SM_ToiletClosed": {
     "shape": "bbox",
     "w": 0.56,
     "h": 0.357,
     "r": 0.558,
-    "mesh": "mesh_shapes/SM_ToiletClosed.png"
+    "mesh": "mesh_shapes/SM_ToiletClosed.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ToiletClosed.png"
   },
   "SM_Urinal": {
     "shape": "bbox",
     "w": 0.398,
-    "h": 0.346,
+    "h": 0.349,
     "r": 0.418,
-    "mesh": "mesh_shapes/SM_Urinal.png"
+    "mesh": "mesh_shapes/SM_Urinal.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Urinal.png"
   },
   "SM_Washbasin": {
     "shape": "bbox",
-    "w": 0.548,
-    "h": 0.996,
-    "r": 0.738,
-    "mesh": "mesh_shapes/SM_Washbasin.png"
+    "w": 0.551,
+    "h": 0.999,
+    "r": 0.739,
+    "mesh": "mesh_shapes/SM_Washbasin.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Washbasin.png"
   },
   "SM_Extinguisher": {
     "shape": "bbox",
     "w": 0.17,
     "h": 0.252,
     "r": 0.125,
-    "mesh": "mesh_shapes/SM_Extinguisher.png"
+    "mesh": "mesh_shapes/SM_Extinguisher.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_Extinguisher.png"
   },
   "SM_FireCabinetA": {
     "shape": "bbox",
     "w": 0.299,
     "h": 0.797,
     "r": 0.496,
-    "mesh": "mesh_shapes/SM_FireCabinetA.png"
+    "mesh": "mesh_shapes/SM_FireCabinetA.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_FireCabinetA.png"
   },
   "SM_FireCabinetB": {
     "shape": "bbox",
     "w": 0.299,
     "h": 0.451,
     "r": 0.372,
-    "mesh": "mesh_shapes/SM_FireCabinetB.png"
+    "mesh": "mesh_shapes/SM_FireCabinetB.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_FireCabinetB.png"
   },
   "SM_VaseDecorative": {
     "shape": "bbox",
     "w": 0.357,
     "h": 0.357,
     "r": 0.178,
-    "mesh": "mesh_shapes/SM_VaseDecorative.png"
+    "mesh": "mesh_shapes/SM_VaseDecorative.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_VaseDecorative.png"
   },
   "SM_ColumnA": {
     "shape": "bbox",
     "w": 1.02,
     "h": 1.02,
     "r": 0.709,
-    "mesh": "mesh_shapes/SM_ColumnA.png"
+    "mesh": "mesh_shapes/SM_ColumnA.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ColumnA.png"
   },
   "SM_ColumnD": {
     "shape": "bbox",
-    "w": 0.51,
+    "w": 0.501,
     "h": 1.02,
     "r": 0.709,
-    "mesh": "mesh_shapes/SM_ColumnD.png"
+    "mesh": "mesh_shapes/SM_ColumnD.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/SM_ColumnD.png"
   },
   "SM_Elevator": {
     "shape": "bbox",
-    "w": 1.5,
+    "w": 1.96,
     "h": 1.96,
-    "r": 1.789,
-    "mesh": "mesh_shapes/SM_Elevator.png"
+    "r": 2.184,
+    "mesh": "mesh_shapes/SM_Elevator.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/SM_Elevator.png"
   },
   "AV_CapriceBackless_A": {
     "shape": "bbox",
     "w": 0.697,
     "h": 0.697,
-    "r": 0.35,
-    "mesh": "mesh_shapes/AV_CapriceBackless_A.png"
+    "r": 0.349,
+    "mesh": "mesh_shapes/AV_CapriceBackless_A.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_CapriceBackless_A.png"
   },
   "AV_CapriceTable_A": {
     "shape": "bbox",
@@ -410,7 +522,9 @@
     "w": 0.697,
     "h": 0.697,
     "r": 0.35,
-    "mesh": "mesh_shapes/AV_Caprice_A.png"
+    "mesh": "mesh_shapes/AV_Caprice_A.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Caprice_A.png"
   },
   "AV_Caprice_B": {
     "shape": "bbox",
@@ -428,38 +542,48 @@
   },
   "AV_Contemporary_Hutch": {
     "shape": "bbox",
-    "w": 1.805,
+    "w": 1.799,
     "h": 0.375,
-    "r": 0.919,
-    "mesh": "mesh_shapes/AV_Contemporary_Hutch.png"
+    "r": 0.917,
+    "mesh": "mesh_shapes/AV_Contemporary_Hutch.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Contemporary_Hutch.png"
   },
   "AV_Contemporary_LockedStorage": {
     "shape": "bbox",
     "w": 0.867,
     "h": 0.595,
     "r": 0.525,
-    "mesh": "mesh_shapes/AV_Contemporary_LockedStorage.png"
+    "mesh": "mesh_shapes/AV_Contemporary_LockedStorage.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Contemporary_LockedStorage.png"
   },
   "AV_Contemporary_OpenStorage": {
     "shape": "bbox",
     "w": 0.867,
     "h": 0.557,
     "r": 0.513,
-    "mesh": "mesh_shapes/AV_Contemporary_OpenStorage.png"
+    "mesh": "mesh_shapes/AV_Contemporary_OpenStorage.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Contemporary_OpenStorage.png"
   },
   "AV_Contemporary_StorageCube": {
     "shape": "bbox",
     "w": 0.375,
     "h": 0.375,
-    "r": 0.261,
-    "mesh": "mesh_shapes/AV_Contemporary_StorageCube.png"
+    "r": 0.259,
+    "mesh": "mesh_shapes/AV_Contemporary_StorageCube.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Contemporary_StorageCube.png"
   },
   "AV_Standard_HalfUnit": {
     "shape": "bbox",
     "w": 0.398,
     "h": 0.398,
     "r": 0.28,
-    "mesh": "mesh_shapes/AV_Standard_HalfUnit.png"
+    "mesh": "mesh_shapes/AV_Standard_HalfUnit.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Standard_HalfUnit.png"
   },
   "AV_Standard_LargeUnit": {
     "shape": "bbox",
@@ -473,6 +597,2222 @@
     "w": 0.797,
     "h": 0.398,
     "r": 0.444,
-    "mesh": "mesh_shapes/AV_Standard_SmallUnit.png"
+    "mesh": "mesh_shapes/AV_Standard_SmallUnit.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Standard_SmallUnit.png"
+  },
+  "AV_Steam": {
+    "shape": "bbox",
+    "w": 4.254,
+    "h": 1.195,
+    "r": 2.165,
+    "mesh": "mesh_shapes/AV_Steam.png",
+    "mesh_mpp": 0.005859,
+    "color": "mesh_shapes/color/AV_Steam.png"
+  },
+  "AV_Anora": {
+    "shape": "bbox",
+    "w": 0.677,
+    "h": 0.65,
+    "r": 0.408,
+    "mesh": "mesh_shapes/AV_Anora.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Anora.png"
+  },
+  "AV_Anza_Large": {
+    "shape": "bbox",
+    "w": 0.861,
+    "h": 0.861,
+    "r": 0.431,
+    "mesh": "mesh_shapes/AV_Anza_Large.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Anza_Large.png"
+  },
+  "AV_Anza_Medium": {
+    "shape": "bbox",
+    "w": 0.633,
+    "h": 0.633,
+    "r": 0.316,
+    "mesh": "mesh_shapes/AV_Anza_Medium.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Anza_Medium.png"
+  },
+  "AV_Anza_Tall": {
+    "shape": "bbox",
+    "w": 0.545,
+    "h": 0.545,
+    "r": 0.274,
+    "mesh": "mesh_shapes/AV_Anza_Tall.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Anza_Tall.png"
+  },
+  "AV_Appleseed_Loveseat": {
+    "shape": "bbox",
+    "w": 1.424,
+    "h": 0.873,
+    "r": 0.816,
+    "mesh": "mesh_shapes/AV_Appleseed_Loveseat.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Appleseed_Loveseat.png"
+  },
+  "AV_ArcFloorLamp": {
+    "shape": "bbox",
+    "w": 1.248,
+    "h": 0.454,
+    "r": 0.65,
+    "mesh": "mesh_shapes/AV_ArcFloorLamp.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_ArcFloorLamp.png"
+  },
+  "AV_ArcadeMachine": {
+    "shape": "bbox",
+    "w": 0.65,
+    "h": 0.82,
+    "r": 0.52,
+    "mesh": "mesh_shapes/AV_ArcadeMachine.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_ArcadeMachine.png"
+  },
+  "AV_Armchair": {
+    "shape": "bbox",
+    "w": 1.099,
+    "h": 0.961,
+    "r": 0.719,
+    "mesh": "mesh_shapes/AV_Armchair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Armchair.png"
+  },
+  "AV_Arnold": {
+    "shape": "bbox",
+    "w": 2.546,
+    "h": 1.087,
+    "r": 1.355,
+    "mesh": "mesh_shapes/AV_Arnold.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Arnold.png"
+  },
+  "AV_Basic": {
+    "shape": "bbox",
+    "w": 0.633,
+    "h": 0.653,
+    "r": 0.435,
+    "mesh": "mesh_shapes/AV_Basic.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Basic.png"
+  },
+  "AV_Birch_HighbackSeat": {
+    "shape": "bbox",
+    "w": 0.779,
+    "h": 0.776,
+    "r": 0.541,
+    "mesh": "mesh_shapes/AV_Birch_HighbackSeat.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Birch_HighbackSeat.png"
+  },
+  "AV_Boat": {
+    "shape": "bbox",
+    "w": 2.414,
+    "h": 1.096,
+    "r": 1.252,
+    "mesh": "mesh_shapes/AV_Boat.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Boat.png"
+  },
+  "AV_BrassFloorLamp": {
+    "shape": "bbox",
+    "w": 0.261,
+    "h": 0.129,
+    "r": 0.183,
+    "mesh": "mesh_shapes/AV_BrassFloorLamp.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_BrassFloorLamp.png"
+  },
+  "AV_Cardbox_C1": {
+    "shape": "bbox",
+    "w": 0.51,
+    "h": 0.51,
+    "r": 0.356,
+    "mesh": "mesh_shapes/AV_Cardbox_C1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Cardbox_C1.png"
+  },
+  "AV_Chair_Array": {
+    "shape": "bbox",
+    "w": 0.548,
+    "h": 0.627,
+    "r": 0.372,
+    "mesh": "mesh_shapes/AV_Chair_Array.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Chair_Array.png"
+  },
+  "AV_Chair_Desk": {
+    "shape": "bbox",
+    "w": 0.671,
+    "h": 0.645,
+    "r": 0.498,
+    "mesh": "mesh_shapes/AV_Chair_Desk.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Chair_Desk.png"
+  },
+  "AV_Chair_Wire": {
+    "shape": "bbox",
+    "w": 0.513,
+    "h": 0.548,
+    "r": 0.359,
+    "mesh": "mesh_shapes/AV_Chair_Wire.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Chair_Wire.png"
+  },
+  "AV_Cline": {
+    "shape": "bbox",
+    "w": 2.411,
+    "h": 1.116,
+    "r": 1.274,
+    "mesh": "mesh_shapes/AV_Cline.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Cline.png"
+  },
+  "AV_Contemporary_LaterialFile": {
+    "shape": "bbox",
+    "w": 0.867,
+    "h": 0.592,
+    "r": 0.525,
+    "mesh": "mesh_shapes/AV_Contemporary_LaterialFile.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Contemporary_LaterialFile.png"
+  },
+  "AV_Contemporary_RiseFull": {
+    "shape": "bbox",
+    "w": 1.799,
+    "h": 0.398,
+    "r": 0.919,
+    "mesh": "mesh_shapes/AV_Contemporary_RiseFull.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Contemporary_RiseFull.png"
+  },
+  "AV_CornerRail_A1": {
+    "shape": "bbox",
+    "w": 0.422,
+    "h": 0.334,
+    "r": 0.267,
+    "mesh": "mesh_shapes/AV_CornerRail_A1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_CornerRail_A1.png"
+  },
+  "AV_Costello": {
+    "shape": "bbox",
+    "w": 3.498,
+    "h": 0.598,
+    "r": 1.772,
+    "mesh": "mesh_shapes/AV_Costello.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_Costello.png"
+  },
+  "AV_Crestwood_Loveseat": {
+    "shape": "bbox",
+    "w": 1.828,
+    "h": 0.976,
+    "r": 1.017,
+    "mesh": "mesh_shapes/AV_Crestwood_Loveseat.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Crestwood_Loveseat.png"
+  },
+  "AV_Curved_Full": {
+    "shape": "bbox",
+    "w": 2.127,
+    "h": 0.835,
+    "r": 1.095,
+    "mesh": "mesh_shapes/AV_Curved_Full.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Curved_Full.png"
+  },
+  "AV_Daybed": {
+    "shape": "bbox",
+    "w": 2.309,
+    "h": 1.368,
+    "r": 1.372,
+    "mesh": "mesh_shapes/AV_Daybed.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Daybed.png"
+  },
+  "AV_Dentist": {
+    "shape": "bbox",
+    "w": 1.828,
+    "h": 0.577,
+    "r": 0.954,
+    "mesh": "mesh_shapes/AV_Dentist.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Dentist.png"
+  },
+  "AV_DesPeres_Chair": {
+    "shape": "bbox",
+    "w": 0.457,
+    "h": 0.562,
+    "r": 0.36,
+    "mesh": "mesh_shapes/AV_DesPeres_Chair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_DesPeres_Chair.png"
+  },
+  "AV_Desk_01": {
+    "shape": "bbox",
+    "w": 0.639,
+    "h": 1.91,
+    "r": 1.005,
+    "mesh": "mesh_shapes/AV_Desk_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Desk_01.png"
+  },
+  "AV_EastRural_Table": {
+    "shape": "bbox",
+    "w": 0.914,
+    "h": 1.526,
+    "r": 0.887,
+    "mesh": "mesh_shapes/AV_EastRural_Table.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_EastRural_Table.png"
+  },
+  "AV_Ellendale": {
+    "shape": "bbox",
+    "w": 0.527,
+    "h": 0.483,
+    "r": 0.357,
+    "mesh": "mesh_shapes/AV_Ellendale.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Ellendale.png"
+  },
+  "AV_Elliot": {
+    "shape": "bbox",
+    "w": 0.671,
+    "h": 0.671,
+    "r": 0.369,
+    "mesh": "mesh_shapes/AV_Elliot.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Elliot.png"
+  },
+  "AV_Fenton": {
+    "shape": "bbox",
+    "w": 1.099,
+    "h": 0.252,
+    "r": 0.563,
+    "mesh": "mesh_shapes/AV_Fenton.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Fenton.png"
+  },
+  "AV_Ferguson": {
+    "shape": "bbox",
+    "w": 0.914,
+    "h": 0.311,
+    "r": 0.48,
+    "mesh": "mesh_shapes/AV_Ferguson.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Ferguson.png"
+  },
+  "AV_Festus01": {
+    "shape": "bbox",
+    "w": 0.381,
+    "h": 0.381,
+    "r": 0.265,
+    "mesh": "mesh_shapes/AV_Festus01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Festus01.png"
+  },
+  "AV_FloorLamp": {
+    "shape": "bbox",
+    "w": 0.293,
+    "h": 0.293,
+    "r": 0.146,
+    "mesh": "mesh_shapes/AV_FloorLamp.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_FloorLamp.png"
+  },
+  "AV_Gilbert": {
+    "shape": "bbox",
+    "w": 2.303,
+    "h": 0.993,
+    "r": 1.15,
+    "mesh": "mesh_shapes/AV_Gilbert.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_Gilbert.png"
+  },
+  "AV_Grandfather_Clock": {
+    "shape": "bbox",
+    "w": 0.621,
+    "h": 0.425,
+    "r": 0.373,
+    "mesh": "mesh_shapes/AV_Grandfather_Clock.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Grandfather_Clock.png"
+  },
+  "AV_Hexagon": {
+    "shape": "bbox",
+    "w": 1.242,
+    "h": 1.242,
+    "r": 0.624,
+    "mesh": "mesh_shapes/AV_Hexagon.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Hexagon.png"
+  },
+  "AV_Huntliegh": {
+    "shape": "bbox",
+    "w": 0.448,
+    "h": 1.822,
+    "r": 0.936,
+    "mesh": "mesh_shapes/AV_Huntliegh.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Huntliegh.png"
+  },
+  "AV_Jennings_Bench": {
+    "shape": "bbox",
+    "w": 1.605,
+    "h": 0.41,
+    "r": 0.825,
+    "mesh": "mesh_shapes/AV_Jennings_Bench.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Jennings_Bench.png"
+  },
+  "AV_Jennings_Chair": {
+    "shape": "bbox",
+    "w": 0.451,
+    "h": 0.601,
+    "r": 0.373,
+    "mesh": "mesh_shapes/AV_Jennings_Chair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Jennings_Chair.png"
+  },
+  "AV_Jobba_Sofa": {
+    "shape": "bbox",
+    "w": 1.793,
+    "h": 0.691,
+    "r": 0.954,
+    "mesh": "mesh_shapes/AV_Jobba_Sofa.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Jobba_Sofa.png"
+  },
+  "AV_Kettle_Seat": {
+    "shape": "bbox",
+    "w": 1.5,
+    "h": 0.618,
+    "r": 0.806,
+    "mesh": "mesh_shapes/AV_Kettle_Seat.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Kettle_Seat.png"
+  },
+  "AV_L_Desk": {
+    "shape": "bbox",
+    "w": 2.048,
+    "h": 2.057,
+    "r": 1.416,
+    "mesh": "mesh_shapes/AV_L_Desk.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_L_Desk.png"
+  },
+  "AV_Ladder": {
+    "shape": "bbox",
+    "w": 1.002,
+    "h": 0.393,
+    "r": 0.561,
+    "mesh": "mesh_shapes/AV_Ladder.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Ladder.png"
+  },
+  "AV_Ladue": {
+    "shape": "bbox",
+    "w": 0.595,
+    "h": 0.419,
+    "r": 0.361,
+    "mesh": "mesh_shapes/AV_Ladue.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Ladue.png"
+  },
+  "AV_Maplewood_Sofa": {
+    "shape": "bbox",
+    "w": 2.742,
+    "h": 0.936,
+    "r": 1.445,
+    "mesh": "mesh_shapes/AV_Maplewood_Sofa.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_Maplewood_Sofa.png"
+  },
+  "AV_MetalFencing_A1": {
+    "shape": "bbox",
+    "w": 0.229,
+    "h": 0.229,
+    "r": 0.15,
+    "mesh": "mesh_shapes/AV_MetalFencing_A1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_MetalFencing_A1.png"
+  },
+  "AV_Midtown": {
+    "shape": "bbox",
+    "w": 1.014,
+    "h": 0.943,
+    "r": 0.688,
+    "mesh": "mesh_shapes/AV_Midtown.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Midtown.png"
+  },
+  "AV_Modern": {
+    "shape": "bbox",
+    "w": 2.988,
+    "h": 0.875,
+    "r": 1.56,
+    "mesh": "mesh_shapes/AV_Modern.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_Modern.png"
+  },
+  "AV_Moline": {
+    "shape": "bbox",
+    "w": 2.59,
+    "h": 0.987,
+    "r": 1.386,
+    "mesh": "mesh_shapes/AV_Moline.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Moline.png"
+  },
+  "AV_Monarch": {
+    "shape": "bbox",
+    "w": 0.533,
+    "h": 0.606,
+    "r": 0.391,
+    "mesh": "mesh_shapes/AV_Monarch.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Monarch.png"
+  },
+  "AV_OakTableLarge": {
+    "shape": "bbox",
+    "w": 2.997,
+    "h": 0.896,
+    "r": 1.561,
+    "mesh": "mesh_shapes/AV_OakTableLarge.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_OakTableLarge.png"
+  },
+  "AV_Pallet_A1": {
+    "shape": "bbox",
+    "w": 1.201,
+    "h": 0.797,
+    "r": 0.719,
+    "mesh": "mesh_shapes/AV_Pallet_A1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Pallet_A1.png"
+  },
+  "AV_Pallets_A1": {
+    "shape": "bbox",
+    "w": 1.89,
+    "h": 2.13,
+    "r": 1.385,
+    "mesh": "mesh_shapes/AV_Pallets_A1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Pallets_A1.png"
+  },
+  "AV_Partition_01": {
+    "shape": "bbox",
+    "w": 4.447,
+    "h": 1.043,
+    "r": 2.283,
+    "mesh": "mesh_shapes/AV_Partition_01.png",
+    "mesh_mpp": 0.005859,
+    "color": "mesh_shapes/color/AV_Partition_01.png"
+  },
+  "AV_Petite_Chair": {
+    "shape": "bbox",
+    "w": 0.709,
+    "h": 0.706,
+    "r": 0.495,
+    "mesh": "mesh_shapes/AV_Petite_Chair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Petite_Chair.png"
+  },
+  "AV_Petite_Loveseat": {
+    "shape": "bbox",
+    "w": 1.418,
+    "h": 0.709,
+    "r": 0.789,
+    "mesh": "mesh_shapes/AV_Petite_Loveseat.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Petite_Loveseat.png"
+  },
+  "AV_PlantPot": {
+    "shape": "bbox",
+    "w": 0.653,
+    "h": 0.656,
+    "r": 0.327,
+    "mesh": "mesh_shapes/AV_PlantPot.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_PlantPot.png"
+  },
+  "AV_Plant_02": {
+    "shape": "bbox",
+    "w": 0.442,
+    "h": 0.413,
+    "r": 0.269,
+    "mesh": "mesh_shapes/AV_Plant_02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Plant_02.png"
+  },
+  "AV_Plant_Succulent_01": {
+    "shape": "bbox",
+    "w": 0.158,
+    "h": 0.114,
+    "r": 0.081,
+    "mesh": "mesh_shapes/AV_Plant_Succulent_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Plant_Succulent_01.png"
+  },
+  "AV_Playhouse": {
+    "shape": "bbox",
+    "w": 1.857,
+    "h": 0.645,
+    "r": 0.976,
+    "mesh": "mesh_shapes/AV_Playhouse.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Playhouse.png"
+  },
+  "AV_RackLarge_A7": {
+    "shape": "bbox",
+    "w": 2.065,
+    "h": 3.999,
+    "r": 2.228,
+    "mesh": "mesh_shapes/AV_RackLarge_A7.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_RackLarge_A7.png"
+  },
+  "AV_RackLongEmpty_A1": {
+    "shape": "bbox",
+    "w": 1.081,
+    "h": 3.999,
+    "r": 2.057,
+    "mesh": "mesh_shapes/AV_RackLongEmpty_A1.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_RackLongEmpty_A1.png"
+  },
+  "AV_RackLong_A3": {
+    "shape": "bbox",
+    "w": 1.085,
+    "h": 3.999,
+    "r": 2.057,
+    "mesh": "mesh_shapes/AV_RackLong_A3.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_RackLong_A3.png"
+  },
+  "AV_RackSmall_A1": {
+    "shape": "bbox",
+    "w": 1.078,
+    "h": 1.998,
+    "r": 1.113,
+    "mesh": "mesh_shapes/AV_RackSmall_A1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_RackSmall_A1.png"
+  },
+  "AV_RampLong_A1": {
+    "shape": "bbox",
+    "w": 2.238,
+    "h": 0.346,
+    "r": 1.123,
+    "mesh": "mesh_shapes/AV_RampLong_A1.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_RampLong_A1.png"
+  },
+  "AV_Rave": {
+    "shape": "bbox",
+    "w": 0.785,
+    "h": 0.791,
+    "r": 0.526,
+    "mesh": "mesh_shapes/AV_Rave.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Rave.png"
+  },
+  "AV_Reidmeyer": {
+    "shape": "bbox",
+    "w": 0.756,
+    "h": 0.709,
+    "r": 0.41,
+    "mesh": "mesh_shapes/AV_Reidmeyer.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Reidmeyer.png"
+  },
+  "AV_Rockhill_Var01": {
+    "shape": "bbox",
+    "w": 0.519,
+    "h": 2.675,
+    "r": 1.354,
+    "mesh": "mesh_shapes/AV_Rockhill_Var01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Rockhill_Var01.png"
+  },
+  "AV_Seating_Danny": {
+    "shape": "bbox",
+    "w": 0.451,
+    "h": 0.401,
+    "r": 0.294,
+    "mesh": "mesh_shapes/AV_Seating_Danny.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Seating_Danny.png"
+  },
+  "AV_Seating_Peach": {
+    "shape": "bbox",
+    "w": 0.621,
+    "h": 0.674,
+    "r": 0.425,
+    "mesh": "mesh_shapes/AV_Seating_Peach.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Seating_Peach.png"
+  },
+  "AV_Sedie_Chair": {
+    "shape": "bbox",
+    "w": 0.621,
+    "h": 0.58,
+    "r": 0.421,
+    "mesh": "mesh_shapes/AV_Sedie_Chair.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Sedie_Chair.png"
+  },
+  "AV_Soba": {
+    "shape": "bbox",
+    "w": 0.656,
+    "h": 0.642,
+    "r": 0.374,
+    "mesh": "mesh_shapes/AV_Soba.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Soba.png"
+  },
+  "AV_SquareGardenPlanter_Large": {
+    "shape": "bbox",
+    "w": 0.463,
+    "h": 0.463,
+    "r": 0.325,
+    "mesh": "mesh_shapes/AV_SquareGardenPlanter_Large.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_SquareGardenPlanter_Large.png"
+  },
+  "AV_SquareGardenPlanter_Long": {
+    "shape": "bbox",
+    "w": 0.967,
+    "h": 0.381,
+    "r": 0.515,
+    "mesh": "mesh_shapes/AV_SquareGardenPlanter_Long.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_SquareGardenPlanter_Long.png"
+  },
+  "AV_Stackable": {
+    "shape": "bbox",
+    "w": 0.627,
+    "h": 0.574,
+    "r": 0.381,
+    "mesh": "mesh_shapes/AV_Stackable.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Stackable.png"
+  },
+  "AV_Tables_Danny": {
+    "shape": "bbox",
+    "w": 1.418,
+    "h": 0.609,
+    "r": 0.77,
+    "mesh": "mesh_shapes/AV_Tables_Danny.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Tables_Danny.png"
+  },
+  "AV_Tables_Peach": {
+    "shape": "bbox",
+    "w": 0.779,
+    "h": 0.68,
+    "r": 0.476,
+    "mesh": "mesh_shapes/AV_Tables_Peach.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Tables_Peach.png"
+  },
+  "AV_TetriminoShelf": {
+    "shape": "bbox",
+    "w": 0.97,
+    "h": 0.138,
+    "r": 0.509,
+    "mesh": "mesh_shapes/AV_TetriminoShelf.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_TetriminoShelf.png"
+  },
+  "AV_VintageFloorLamp": {
+    "shape": "bbox",
+    "w": 0.275,
+    "h": 0.533,
+    "r": 0.394,
+    "mesh": "mesh_shapes/AV_VintageFloorLamp.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_VintageFloorLamp.png"
+  },
+  "AV_WarehousePile_A1": {
+    "shape": "bbox",
+    "w": 3.524,
+    "h": 3.081,
+    "r": 2.299,
+    "mesh": "mesh_shapes/AV_WarehousePile_A1.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/AV_WarehousePile_A1.png"
+  },
+  "AV_WhiteHome03": {
+    "shape": "bbox",
+    "w": 0.996,
+    "h": 0.469,
+    "r": 0.548,
+    "mesh": "mesh_shapes/AV_WhiteHome03.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_WhiteHome03.png"
+  },
+  "AV_Whittershins": {
+    "shape": "bbox",
+    "w": 1.497,
+    "h": 1.497,
+    "r": 0.749,
+    "mesh": "mesh_shapes/AV_Whittershins.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Whittershins.png"
+  },
+  "AV_Willow": {
+    "shape": "bbox",
+    "w": 1.4,
+    "h": 0.756,
+    "r": 0.792,
+    "mesh": "mesh_shapes/AV_Willow.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Willow.png"
+  },
+  "AV_WillowBench": {
+    "shape": "bbox",
+    "w": 1.4,
+    "h": 0.457,
+    "r": 0.734,
+    "mesh": "mesh_shapes/AV_WillowBench.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_WillowBench.png"
+  },
+  "AV_WoodenCrate_A2": {
+    "shape": "bbox",
+    "w": 0.996,
+    "h": 1.002,
+    "r": 0.702,
+    "mesh": "mesh_shapes/AV_WoodenCrate_A2.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_WoodenCrate_A2.png"
+  },
+  "AV_Zag_Backless": {
+    "shape": "bbox",
+    "w": 0.727,
+    "h": 0.727,
+    "r": 0.508,
+    "mesh": "mesh_shapes/AV_Zag_Backless.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Zag_Backless.png"
+  },
+  "AV_Zag_Middle": {
+    "shape": "bbox",
+    "w": 0.724,
+    "h": 0.732,
+    "r": 0.508,
+    "mesh": "mesh_shapes/AV_Zag_Middle.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_Zag_Middle.png"
+  },
+  "AV_dishwasher_A": {
+    "shape": "bbox",
+    "w": 0.592,
+    "h": 0.595,
+    "r": 0.41,
+    "mesh": "mesh_shapes/AV_dishwasher_A.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_dishwasher_A.png"
+  },
+  "AV_fridge": {
+    "shape": "bbox",
+    "w": 1.863,
+    "h": 0.697,
+    "r": 0.99,
+    "mesh": "mesh_shapes/AV_fridge.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_fridge.png"
+  },
+  "AV_stove": {
+    "shape": "bbox",
+    "w": 1.216,
+    "h": 0.677,
+    "r": 0.693,
+    "mesh": "mesh_shapes/AV_stove.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_stove.png"
+  },
+  "AV_wall_oven": {
+    "shape": "bbox",
+    "w": 0.732,
+    "h": 0.677,
+    "r": 0.498,
+    "mesh": "mesh_shapes/AV_wall_oven.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/AV_wall_oven.png"
+  },
+  "DT_AirCompressorHorizontal_A01_01": {
+    "shape": "bbox",
+    "w": 0.352,
+    "h": 0.68,
+    "r": 0.353,
+    "mesh": "mesh_shapes/DT_AirCompressorHorizontal_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_AirCompressorHorizontal_A01_01.png"
+  },
+  "DT_AirCompressorVertical_A01_01": {
+    "shape": "bbox",
+    "w": 0.744,
+    "h": 0.665,
+    "r": 0.44,
+    "mesh": "mesh_shapes/DT_AirCompressorVertical_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_AirCompressorVertical_A01_01.png"
+  },
+  "DT_AluminumStepLadder_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.428,
+    "h": 0.158,
+    "r": 0.225,
+    "mesh": "mesh_shapes/DT_AluminumStepLadder_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_AluminumStepLadder_A01_PR_NVD_01.png"
+  },
+  "DT_Bin_B04_20x35x14cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.346,
+    "h": 0.199,
+    "r": 0.197,
+    "mesh": "mesh_shapes/DT_Bin_B04_20x35x14cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Bin_B04_20x35x14cm_PR_V_NVD_01.png"
+  },
+  "DT_BiohazardWasteCan_A02_01": {
+    "shape": "bbox",
+    "w": 0.539,
+    "h": 0.604,
+    "r": 0.338,
+    "mesh": "mesh_shapes/DT_BiohazardWasteCan_A02_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_BiohazardWasteCan_A02_01.png"
+  },
+  "DT_BlockPallet_A03_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.002,
+    "h": 1.201,
+    "r": 0.778,
+    "mesh": "mesh_shapes/DT_BlockPallet_A03_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_BlockPallet_A03_PR_NVD_01.png"
+  },
+  "DT_BlockPallet_B01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.201,
+    "h": 0.797,
+    "r": 0.719,
+    "mesh": "mesh_shapes/DT_BlockPallet_B01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_BlockPallet_B01_PR_NVD_01.png"
+  },
+  "DT_BlockPallet_C01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.014,
+    "h": 1.225,
+    "r": 0.793,
+    "mesh": "mesh_shapes/DT_BlockPallet_C01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_BlockPallet_C01_PR_NVD_01.png"
+  },
+  "DT_Box_A06_60x40x17cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.598,
+    "h": 0.398,
+    "r": 0.344,
+    "mesh": "mesh_shapes/DT_Box_A06_60x40x17cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Box_A06_60x40x17cm_PR_V_NVD_01.png"
+  },
+  "DT_BulkStorageRack_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.553,
+    "h": 0.902,
+    "r": 0.896,
+    "mesh": "mesh_shapes/DT_BulkStorageRack_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_BulkStorageRack_A01_PR_NVD_01.png"
+  },
+  "DT_Cabinet_A07_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.697,
+    "h": 0.308,
+    "r": 0.377,
+    "mesh": "mesh_shapes/DT_Cabinet_A07_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Cabinet_A07_PR_NVD_01.png"
+  },
+  "DT_Container_A01_46x33x24cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.451,
+    "h": 0.322,
+    "r": 0.265,
+    "mesh": "mesh_shapes/DT_Container_A01_46x33x24cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Container_A01_46x33x24cm_PR_V_NVD_01.png"
+  },
+  "DT_Container_B04_40x30x12cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.398,
+    "h": 0.299,
+    "r": 0.241,
+    "mesh": "mesh_shapes/DT_Container_B04_40x30x12cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Container_B04_40x30x12cm_PR_V_NVD_01.png"
+  },
+  "DT_Container_C10_40x30x19cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.404,
+    "h": 0.299,
+    "r": 0.244,
+    "mesh": "mesh_shapes/DT_Container_C10_40x30x19cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Container_C10_40x30x19cm_PR_V_NVD_01.png"
+  },
+  "DT_Container_D08_88x57x63cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.879,
+    "h": 0.568,
+    "r": 0.5,
+    "mesh": "mesh_shapes/DT_Container_D08_88x57x63cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Container_D08_88x57x63cm_PR_V_NVD_01.png"
+  },
+  "DT_ConvertibleSteelHandTruck_A01_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.492,
+    "h": 0.48,
+    "r": 0.387,
+    "mesh": "mesh_shapes/DT_ConvertibleSteelHandTruck_A01_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ConvertibleSteelHandTruck_A01_PR_V_NVD_01.png"
+  },
+  "DT_DeluxePackingTable_A01_01": {
+    "shape": "bbox",
+    "w": 2.438,
+    "h": 0.973,
+    "r": 1.306,
+    "mesh": "mesh_shapes/DT_DeluxePackingTable_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_DeluxePackingTable_A01_01.png"
+  },
+  "DT_DeluxeShopDesk_A02_01": {
+    "shape": "bbox",
+    "w": 0.911,
+    "h": 0.829,
+    "r": 0.595,
+    "mesh": "mesh_shapes/DT_DeluxeShopDesk_A02_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_DeluxeShopDesk_A02_01.png"
+  },
+  "DT_DomedWasteTrashCan_A01_01": {
+    "shape": "bbox",
+    "w": 0.27,
+    "h": 0.278,
+    "r": 0.151,
+    "mesh": "mesh_shapes/DT_DomedWasteTrashCan_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_DomedWasteTrashCan_A01_01.png"
+  },
+  "DT_EquipmentPlasticGritContainer_B01_Blue_01": {
+    "shape": "bbox",
+    "w": 1.553,
+    "h": 1.216,
+    "r": 0.936,
+    "mesh": "mesh_shapes/DT_EquipmentPlasticGritContainer_B01_Blue_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_EquipmentPlasticGritContainer_B01_Blue_01.png"
+  },
+  "DT_FiberDrum_A07_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.311,
+    "h": 0.311,
+    "r": 0.201,
+    "mesh": "mesh_shapes/DT_FiberDrum_A07_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_FiberDrum_A07_PR_NVD_01.png"
+  },
+  "DT_HeavyDutyPackingTable_A01_01": {
+    "shape": "bbox",
+    "w": 1.863,
+    "h": 1.219,
+    "r": 1.095,
+    "mesh": "mesh_shapes/DT_HeavyDutyPackingTable_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_HeavyDutyPackingTable_A01_01.png"
+  },
+  "DT_HeavyDutySteelShelving_A13_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.526,
+    "h": 0.914,
+    "r": 0.885,
+    "mesh": "mesh_shapes/DT_HeavyDutySteelShelving_A13_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_HeavyDutySteelShelving_A13_PR_NVD_01.png"
+  },
+  "DT_HeavyDutyTrafficCone_A_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.498,
+    "h": 0.498,
+    "r": 0.307,
+    "mesh": "mesh_shapes/DT_HeavyDutyTrafficCone_A_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_HeavyDutyTrafficCone_A_PR_V_NVD_01.png"
+  },
+  "DT_HeavyDutyWoodCrate_A01_90x90x80cm_PR_NV_01": {
+    "shape": "bbox",
+    "w": 0.902,
+    "h": 0.902,
+    "r": 0.632,
+    "mesh": "mesh_shapes/DT_HeavyDutyWoodCrate_A01_90x90x80cm_PR_NV_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_HeavyDutyWoodCrate_A01_90x90x80cm_PR_NV_01.png"
+  },
+  "DT_HorizontalBarRack_A02_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.433,
+    "h": 0.51,
+    "r": 0.756,
+    "mesh": "mesh_shapes/DT_HorizontalBarRack_A02_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_HorizontalBarRack_A02_PR_NVD_01.png"
+  },
+  "DT_IBCTankHeater_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.348,
+    "h": 1.061,
+    "r": 0.8,
+    "mesh": "mesh_shapes/DT_IBCTankHeater_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_IBCTankHeater_A01_PR_NVD_01.png"
+  },
+  "DT_IndustrialMetalStool_A01_Red_01": {
+    "shape": "bbox",
+    "w": 0.428,
+    "h": 0.428,
+    "r": 0.292,
+    "mesh": "mesh_shapes/DT_IndustrialMetalStool_A01_Red_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_IndustrialMetalStool_A01_Red_01.png"
+  },
+  "DT_IndustrialPackingTable_A01_01": {
+    "shape": "bbox",
+    "w": 1.219,
+    "h": 0.609,
+    "r": 0.679,
+    "mesh": "mesh_shapes/DT_IndustrialPackingTable_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_IndustrialPackingTable_A01_01.png"
+  },
+  "DT_IndustrialSteelShelving_A03_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.914,
+    "h": 0.606,
+    "r": 0.542,
+    "mesh": "mesh_shapes/DT_IndustrialSteelShelving_A03_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_IndustrialSteelShelving_A03_PR_NVD_01.png"
+  },
+  "DT_LabWorkbench_A01_01": {
+    "shape": "bbox",
+    "w": 1.5,
+    "h": 0.8,
+    "r": 0.845,
+    "mesh": "mesh_shapes/DT_LabWorkbench_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_LabWorkbench_A01_01.png"
+  },
+  "DT_MetalWorktable_A04_01": {
+    "shape": "bbox",
+    "w": 0.75,
+    "h": 0.721,
+    "r": 0.514,
+    "mesh": "mesh_shapes/DT_MetalWorktable_A04_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MetalWorktable_A04_01.png"
+  },
+  "DT_MobileShelvingCart_A02_01": {
+    "shape": "bbox",
+    "w": 0.48,
+    "h": 1.002,
+    "r": 0.55,
+    "mesh": "mesh_shapes/DT_MobileShelvingCart_A02_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MobileShelvingCart_A02_01.png"
+  },
+  "DT_MobileShelvingCart_B01_01": {
+    "shape": "bbox",
+    "w": 0.914,
+    "h": 0.7,
+    "r": 0.592,
+    "mesh": "mesh_shapes/DT_MobileShelvingCart_B01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MobileShelvingCart_B01_01.png"
+  },
+  "DT_MobileShelvingCart_C01_01": {
+    "shape": "bbox",
+    "w": 0.504,
+    "h": 1.096,
+    "r": 0.611,
+    "mesh": "mesh_shapes/DT_MobileShelvingCart_C01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MobileShelvingCart_C01_01.png"
+  },
+  "DT_MobileShopDesk_A01_Blue_01": {
+    "shape": "bbox",
+    "w": 0.609,
+    "h": 0.636,
+    "r": 0.415,
+    "mesh": "mesh_shapes/DT_MobileShopDesk_A01_Blue_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MobileShopDesk_A01_Blue_01.png"
+  },
+  "DT_MobileStorageRack_A03_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.65,
+    "h": 1.315,
+    "r": 0.729,
+    "mesh": "mesh_shapes/DT_MobileStorageRack_A03_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MobileStorageRack_A03_PR_NVD_01.png"
+  },
+  "DT_MoppingBucket_B01_01": {
+    "shape": "bbox",
+    "w": 0.369,
+    "h": 0.533,
+    "r": 0.27,
+    "mesh": "mesh_shapes/DT_MoppingBucket_B01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_MoppingBucket_B01_01.png"
+  },
+  "DT_OfficeTrashCan_A01_Gray_01": {
+    "shape": "bbox",
+    "w": 0.299,
+    "h": 0.199,
+    "r": 0.159,
+    "mesh": "mesh_shapes/DT_OfficeTrashCan_A01_Gray_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_OfficeTrashCan_A01_Gray_01.png"
+  },
+  "DT_OpenIndustrialSteelShelving_A04_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.92,
+    "h": 0.46,
+    "r": 0.509,
+    "mesh": "mesh_shapes/DT_OpenIndustrialSteelShelving_A04_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_OpenIndustrialSteelShelving_A04_PR_NVD_01.png"
+  },
+  "DT_PedestalFan_A01_01": {
+    "shape": "bbox",
+    "w": 0.686,
+    "h": 0.686,
+    "r": 0.344,
+    "mesh": "mesh_shapes/DT_PedestalFan_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_PedestalFan_A01_01.png"
+  },
+  "DT_PedestalWorkbench_A06_01": {
+    "shape": "bbox",
+    "w": 1.523,
+    "h": 0.756,
+    "r": 0.844,
+    "mesh": "mesh_shapes/DT_PedestalWorkbench_A06_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_PedestalWorkbench_A06_01.png"
+  },
+  "DT_PlywoodCrate_A04_120x120x50cm_PR_NV_01": {
+    "shape": "bbox",
+    "w": 1.213,
+    "h": 1.219,
+    "r": 0.858,
+    "mesh": "mesh_shapes/DT_PlywoodCrate_A04_120x120x50cm_PR_NV_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_PlywoodCrate_A04_120x120x50cm_PR_NV_01.png"
+  },
+  "DT_Rack_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 3.278,
+    "h": 0.562,
+    "r": 1.661,
+    "mesh": "mesh_shapes/DT_Rack_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/DT_Rack_A01_PR_NVD_01.png"
+  },
+  "DT_Rack_D01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.037,
+    "h": 1.5,
+    "r": 0.91,
+    "mesh": "mesh_shapes/DT_Rack_D01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Rack_D01_PR_NVD_01.png"
+  },
+  "DT_Rack_F02_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.102,
+    "h": 0.457,
+    "r": 0.593,
+    "mesh": "mesh_shapes/DT_Rack_F02_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Rack_F02_PR_NVD_01.png"
+  },
+  "DT_Rack_G02_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 3.243,
+    "h": 0.562,
+    "r": 1.642,
+    "mesh": "mesh_shapes/DT_Rack_G02_PR_NVD_01.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/DT_Rack_G02_PR_NVD_01.png"
+  },
+  "DT_RecycledWoodPallet_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.604,
+    "h": 0.598,
+    "r": 0.421,
+    "mesh": "mesh_shapes/DT_RecycledWoodPallet_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_RecycledWoodPallet_A01_PR_NVD_01.png"
+  },
+  "DT_RecyclingContainerWithWheels_A02_Blue_01": {
+    "shape": "bbox",
+    "w": 0.686,
+    "h": 0.864,
+    "r": 0.531,
+    "mesh": "mesh_shapes/DT_RecyclingContainerWithWheels_A02_Blue_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_RecyclingContainerWithWheels_A02_Blue_01.png"
+  },
+  "DT_RetractableCrowdControl_A01_01": {
+    "shape": "bbox",
+    "w": 0.352,
+    "h": 0.352,
+    "r": 0.177,
+    "mesh": "mesh_shapes/DT_RetractableCrowdControl_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_RetractableCrowdControl_A01_01.png"
+  },
+  "DT_SecurityScannerDoor_A04_01": {
+    "shape": "bbox",
+    "w": 1.061,
+    "h": 0.715,
+    "r": 0.595,
+    "mesh": "mesh_shapes/DT_SecurityScannerDoor_A04_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_SecurityScannerDoor_A04_01.png"
+  },
+  "DT_ServingTrolley_A01_01": {
+    "shape": "bbox",
+    "w": 0.434,
+    "h": 0.765,
+    "r": 0.459,
+    "mesh": "mesh_shapes/DT_ServingTrolley_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ServingTrolley_A01_01.png"
+  },
+  "DT_ServingTrolley_D01_01": {
+    "shape": "bbox",
+    "w": 0.504,
+    "h": 1.172,
+    "r": 0.606,
+    "mesh": "mesh_shapes/DT_ServingTrolley_D01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ServingTrolley_D01_01.png"
+  },
+  "DT_ServingTrolley_E01_01": {
+    "shape": "bbox",
+    "w": 0.51,
+    "h": 0.855,
+    "r": 0.474,
+    "mesh": "mesh_shapes/DT_ServingTrolley_E01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ServingTrolley_E01_01.png"
+  },
+  "DT_ShopDesk_A01_01": {
+    "shape": "bbox",
+    "w": 0.615,
+    "h": 0.595,
+    "r": 0.429,
+    "mesh": "mesh_shapes/DT_ShopDesk_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ShopDesk_A01_01.png"
+  },
+  "DT_ShopStool_A01_01": {
+    "shape": "bbox",
+    "w": 0.422,
+    "h": 0.422,
+    "r": 0.263,
+    "mesh": "mesh_shapes/DT_ShopStool_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ShopStool_A01_01.png"
+  },
+  "DT_ShopStool_B01_Gray_01": {
+    "shape": "bbox",
+    "w": 0.422,
+    "h": 0.422,
+    "r": 0.263,
+    "mesh": "mesh_shapes/DT_ShopStool_B01_Gray_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_ShopStool_B01_Gray_01.png"
+  },
+  "DT_StainlessSteelServiceCart_A01_01": {
+    "shape": "bbox",
+    "w": 0.428,
+    "h": 0.712,
+    "r": 0.41,
+    "mesh": "mesh_shapes/DT_StainlessSteelServiceCart_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_StainlessSteelServiceCart_A01_01.png"
+  },
+  "DT_StainlessSteelStool_A01_01": {
+    "shape": "bbox",
+    "w": 0.407,
+    "h": 0.401,
+    "r": 0.236,
+    "mesh": "mesh_shapes/DT_StainlessSteelStool_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_StainlessSteelStool_A01_01.png"
+  },
+  "DT_StandardAluminumHandTruck_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.434,
+    "h": 0.457,
+    "r": 0.368,
+    "mesh": "mesh_shapes/DT_StandardAluminumHandTruck_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_StandardAluminumHandTruck_A01_PR_NVD_01.png"
+  },
+  "DT_StationaryWorkplatform_A01_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.65,
+    "h": 0.727,
+    "r": 0.471,
+    "mesh": "mesh_shapes/DT_StationaryWorkplatform_A01_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_StationaryWorkplatform_A01_PR_V_NVD_01.png"
+  },
+  "DT_SteelRollingScaffold_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.779,
+    "h": 1.951,
+    "r": 1.041,
+    "mesh": "mesh_shapes/DT_SteelRollingScaffold_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_SteelRollingScaffold_A01_PR_NVD_01.png"
+  },
+  "DT_SwivelShopStool_A01_01": {
+    "shape": "bbox",
+    "w": 0.574,
+    "h": 0.574,
+    "r": 0.286,
+    "mesh": "mesh_shapes/DT_SwivelShopStool_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_SwivelShopStool_A01_01.png"
+  },
+  "DT_TableMetal_A01_01": {
+    "shape": "bbox",
+    "w": 2.062,
+    "h": 0.867,
+    "r": 1.115,
+    "mesh": "mesh_shapes/DT_TableMetal_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TableMetal_A01_01.png"
+  },
+  "DT_TableTrolley_A01_01": {
+    "shape": "bbox",
+    "w": 0.498,
+    "h": 1.16,
+    "r": 0.605,
+    "mesh": "mesh_shapes/DT_TableTrolley_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TableTrolley_A01_01.png"
+  },
+  "DT_TableTrolley_B02_01": {
+    "shape": "bbox",
+    "w": 0.732,
+    "h": 2.241,
+    "r": 1.195,
+    "mesh": "mesh_shapes/DT_TableTrolley_B02_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TableTrolley_B02_01.png"
+  },
+  "DT_TiltAndRollLadder_A01_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.697,
+    "h": 0.618,
+    "r": 0.453,
+    "mesh": "mesh_shapes/DT_TiltAndRollLadder_A01_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TiltAndRollLadder_A01_PR_V_NVD_01.png"
+  },
+  "DT_TireRackSystem_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.881,
+    "h": 0.498,
+    "r": 0.97,
+    "mesh": "mesh_shapes/DT_TireRackSystem_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TireRackSystem_A01_PR_NVD_01.png"
+  },
+  "DT_TireRackSystem_B05_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.307,
+    "h": 0.504,
+    "r": 0.696,
+    "mesh": "mesh_shapes/DT_TireRackSystem_B05_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TireRackSystem_B05_PR_NVD_01.png"
+  },
+  "DT_TireRackSystem_D01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 1.312,
+    "h": 1.008,
+    "r": 0.824,
+    "mesh": "mesh_shapes/DT_TireRackSystem_D01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TireRackSystem_D01_PR_NVD_01.png"
+  },
+  "DT_Tote_A04_80x60x22cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.797,
+    "h": 0.598,
+    "r": 0.469,
+    "mesh": "mesh_shapes/DT_Tote_A04_80x60x22cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Tote_A04_80x60x22cm_PR_V_NVD_01.png"
+  },
+  "DT_Tote_B03_60x40x33cm_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.598,
+    "h": 0.398,
+    "r": 0.331,
+    "mesh": "mesh_shapes/DT_Tote_B03_60x40x33cm_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_Tote_B03_60x40x33cm_PR_V_NVD_01.png"
+  },
+  "DT_TradeMasterCart_A01_01": {
+    "shape": "bbox",
+    "w": 1.154,
+    "h": 0.46,
+    "r": 0.689,
+    "mesh": "mesh_shapes/DT_TradeMasterCart_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TradeMasterCart_A01_01.png"
+  },
+  "DT_TrafficCone_A_PR_V_NVD_01": {
+    "shape": "bbox",
+    "w": 0.17,
+    "h": 0.17,
+    "r": 0.112,
+    "mesh": "mesh_shapes/DT_TrafficCone_A_PR_V_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TrafficCone_A_PR_V_NVD_01.png"
+  },
+  "DT_TrashCan_A01_Blue_01": {
+    "shape": "bbox",
+    "w": 0.574,
+    "h": 0.281,
+    "r": 0.308,
+    "mesh": "mesh_shapes/DT_TrashCan_A01_Blue_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TrashCan_A01_Blue_01.png"
+  },
+  "DT_TurnstileTripod_C01_01": {
+    "shape": "bbox",
+    "w": 0.308,
+    "h": 1.553,
+    "r": 0.775,
+    "mesh": "mesh_shapes/DT_TurnstileTripod_C01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_TurnstileTripod_C01_01.png"
+  },
+  "DT_UtilityCart_B01_01": {
+    "shape": "bbox",
+    "w": 0.48,
+    "h": 0.993,
+    "r": 0.581,
+    "mesh": "mesh_shapes/DT_UtilityCart_B01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_UtilityCart_B01_01.png"
+  },
+  "DT_WarningSign_A02_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.261,
+    "h": 0.275,
+    "r": 0.187,
+    "mesh": "mesh_shapes/DT_WarningSign_A02_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WarningSign_A02_PR_NVD_01.png"
+  },
+  "DT_WetFloorSign_A02_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.311,
+    "h": 0.311,
+    "r": 0.205,
+    "mesh": "mesh_shapes/DT_WetFloorSign_A02_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WetFloorSign_A02_PR_NVD_01.png"
+  },
+  "DT_WireSecurityRoom_A04_01": {
+    "shape": "bbox",
+    "w": 2.496,
+    "h": 2.496,
+    "r": 3.555,
+    "mesh": "mesh_shapes/DT_WireSecurityRoom_A04_01.png",
+    "mesh_mpp": 0.005859,
+    "color": "mesh_shapes/color/DT_WireSecurityRoom_A04_01.png"
+  },
+  "DT_WireShelving_A01_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.765,
+    "h": 0.463,
+    "r": 0.441,
+    "mesh": "mesh_shapes/DT_WireShelving_A01_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WireShelving_A01_PR_NVD_01.png"
+  },
+  "DT_WoodDrumPallet_A03_PR_NVD_01": {
+    "shape": "bbox",
+    "w": 0.908,
+    "h": 0.902,
+    "r": 0.636,
+    "mesh": "mesh_shapes/DT_WoodDrumPallet_A03_PR_NVD_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WoodDrumPallet_A03_PR_NVD_01.png"
+  },
+  "DT_WorkShopTrolley_A01_Red_01": {
+    "shape": "bbox",
+    "w": 0.504,
+    "h": 0.765,
+    "r": 0.465,
+    "mesh": "mesh_shapes/DT_WorkShopTrolley_A01_Red_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WorkShopTrolley_A01_Red_01.png"
+  },
+  "DT_WorkStationCart_A01_01": {
+    "shape": "bbox",
+    "w": 0.58,
+    "h": 0.677,
+    "r": 0.439,
+    "mesh": "mesh_shapes/DT_WorkStationCart_A01_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WorkStationCart_A01_01.png"
+  },
+  "DT_WorkStool_B01_Blue_01": {
+    "shape": "bbox",
+    "w": 0.604,
+    "h": 0.592,
+    "r": 0.332,
+    "mesh": "mesh_shapes/DT_WorkStool_B01_Blue_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/DT_WorkStool_B01_Blue_01.png"
+  },
+  "HOS_SM_BedSideTable_01b": {
+    "shape": "bbox",
+    "w": 0.527,
+    "h": 0.498,
+    "r": 0.352,
+    "mesh": "mesh_shapes/HOS_SM_BedSideTable_01b.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_BedSideTable_01b.png"
+  },
+  "HOS_SM_Cart_01a": {
+    "shape": "bbox",
+    "w": 1.052,
+    "h": 0.627,
+    "r": 0.603,
+    "mesh": "mesh_shapes/HOS_SM_Cart_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Cart_01a.png"
+  },
+  "HOS_SM_Chair_01a": {
+    "shape": "bbox",
+    "w": 0.759,
+    "h": 0.729,
+    "r": 0.399,
+    "mesh": "mesh_shapes/HOS_SM_Chair_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Chair_01a.png"
+  },
+  "HOS_SM_Chair_02a": {
+    "shape": "bbox",
+    "w": 2.355,
+    "h": 0.738,
+    "r": 1.232,
+    "mesh": "mesh_shapes/HOS_SM_Chair_02a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Chair_02a.png"
+  },
+  "HOS_SM_Chair_04a": {
+    "shape": "bbox",
+    "w": 0.691,
+    "h": 0.683,
+    "r": 0.413,
+    "mesh": "mesh_shapes/HOS_SM_Chair_04a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Chair_04a.png"
+  },
+  "HOS_SM_Chart_Rack_01c": {
+    "shape": "bbox",
+    "w": 1.239,
+    "h": 0.425,
+    "r": 0.649,
+    "mesh": "mesh_shapes/HOS_SM_Chart_Rack_01c.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Chart_Rack_01c.png"
+  },
+  "HOS_SM_Desk_04d": {
+    "shape": "bbox",
+    "w": 0.337,
+    "h": 0.357,
+    "r": 0.373,
+    "mesh": "mesh_shapes/HOS_SM_Desk_04d.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Desk_04d.png"
+  },
+  "HOS_SM_DisposalStand_02": {
+    "shape": "bbox",
+    "w": 0.574,
+    "h": 0.639,
+    "r": 0.403,
+    "mesh": "mesh_shapes/HOS_SM_DisposalStand_02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_DisposalStand_02.png"
+  },
+  "HOS_SM_DrinksMachine": {
+    "shape": "bbox",
+    "w": 0.844,
+    "h": 1.213,
+    "r": 1.037,
+    "mesh": "mesh_shapes/HOS_SM_DrinksMachine.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_DrinksMachine.png"
+  },
+  "HOS_SM_GasCart_01c": {
+    "shape": "bbox",
+    "w": 0.17,
+    "h": 0.173,
+    "r": 0.102,
+    "mesh": "mesh_shapes/HOS_SM_GasCart_01c.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_GasCart_01c.png"
+  },
+  "HOS_SM_Gurney_01a": {
+    "shape": "bbox",
+    "w": 2.174,
+    "h": 0.765,
+    "r": 1.113,
+    "mesh": "mesh_shapes/HOS_SM_Gurney_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Gurney_01a.png"
+  },
+  "HOS_SM_HospitalBed_01b": {
+    "shape": "bbox",
+    "w": 1.107,
+    "h": 2.549,
+    "r": 1.415,
+    "mesh": "mesh_shapes/HOS_SM_HospitalBed_01b.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_HospitalBed_01b.png"
+  },
+  "HOS_SM_HospitalBed_02d": {
+    "shape": "bbox",
+    "w": 1.09,
+    "h": 2.215,
+    "r": 1.206,
+    "mesh": "mesh_shapes/HOS_SM_HospitalBed_02d.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_HospitalBed_02d.png"
+  },
+  "HOS_SM_MedShelf_01d": {
+    "shape": "bbox",
+    "w": 0.908,
+    "h": 0.803,
+    "r": 0.606,
+    "mesh": "mesh_shapes/HOS_SM_MedShelf_01d.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_MedShelf_01d.png"
+  },
+  "HOS_SM_MedicalCabinet_01a": {
+    "shape": "bbox",
+    "w": 0.87,
+    "h": 0.647,
+    "r": 1.05,
+    "mesh": "mesh_shapes/HOS_SM_MedicalCabinet_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_MedicalCabinet_01a.png"
+  },
+  "HOS_SM_MopSet_01a": {
+    "shape": "bbox",
+    "w": 0.29,
+    "h": 0.882,
+    "r": 0.76,
+    "mesh": "mesh_shapes/HOS_SM_MopSet_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_MopSet_01a.png"
+  },
+  "HOS_SM_Scale_01a": {
+    "shape": "bbox",
+    "w": 0.457,
+    "h": 0.598,
+    "r": 0.364,
+    "mesh": "mesh_shapes/HOS_SM_Scale_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Scale_01a.png"
+  },
+  "HOS_SM_ShelfSet_01a": {
+    "shape": "bbox",
+    "w": 1.723,
+    "h": 0.557,
+    "r": 0.9,
+    "mesh": "mesh_shapes/HOS_SM_ShelfSet_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_ShelfSet_01a.png"
+  },
+  "HOS_SM_Shelf_06f": {
+    "shape": "bbox",
+    "w": 0.958,
+    "h": 0.876,
+    "r": 0.617,
+    "mesh": "mesh_shapes/HOS_SM_Shelf_06f.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Shelf_06f.png"
+  },
+  "HOS_SM_SideTable_02a": {
+    "shape": "bbox",
+    "w": 0.914,
+    "h": 0.422,
+    "r": 0.495,
+    "mesh": "mesh_shapes/HOS_SM_SideTable_02a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_SideTable_02a.png"
+  },
+  "HOS_SM_SupplyCabinet_01c": {
+    "shape": "bbox",
+    "w": 0.727,
+    "h": 1.471,
+    "r": 0.799,
+    "mesh": "mesh_shapes/HOS_SM_SupplyCabinet_01c.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_SupplyCabinet_01c.png"
+  },
+  "HOS_SM_SupplyCart_01e": {
+    "shape": "bbox",
+    "w": 1.099,
+    "h": 0.524,
+    "r": 0.638,
+    "mesh": "mesh_shapes/HOS_SM_SupplyCart_01e.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_SupplyCart_01e.png"
+  },
+  "HOS_SM_SupplyCart_02a": {
+    "shape": "bbox",
+    "w": 0.838,
+    "h": 0.457,
+    "r": 0.459,
+    "mesh": "mesh_shapes/HOS_SM_SupplyCart_02a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_SupplyCart_02a.png"
+  },
+  "HOS_SM_SupplyCart_03a": {
+    "shape": "bbox",
+    "w": 0.592,
+    "h": 1.104,
+    "r": 0.623,
+    "mesh": "mesh_shapes/HOS_SM_SupplyCart_03a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_SupplyCart_03a.png"
+  },
+  "HOS_SM_Toilet": {
+    "shape": "bbox",
+    "w": 0.56,
+    "h": 0.357,
+    "r": 0.558,
+    "mesh": "mesh_shapes/HOS_SM_Toilet.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Toilet.png"
+  },
+  "HOS_SM_TrashCan": {
+    "shape": "bbox",
+    "w": 0.299,
+    "h": 0.299,
+    "r": 0.149,
+    "mesh": "mesh_shapes/HOS_SM_TrashCan.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_TrashCan.png"
+  },
+  "HOS_SM_Washbasin": {
+    "shape": "bbox",
+    "w": 0.551,
+    "h": 0.999,
+    "r": 0.74,
+    "mesh": "mesh_shapes/HOS_SM_Washbasin.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_Washbasin.png"
+  },
+  "HOS_SM_WaterDispenser_01a": {
+    "shape": "bbox",
+    "w": 0.398,
+    "h": 0.34,
+    "r": 0.236,
+    "mesh": "mesh_shapes/HOS_SM_WaterDispenser_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_WaterDispenser_01a.png"
+  },
+  "HOS_SM_WheelChair_01a": {
+    "shape": "bbox",
+    "w": 1.102,
+    "h": 0.812,
+    "r": 0.65,
+    "mesh": "mesh_shapes/HOS_SM_WheelChair_01a.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_SM_WheelChair_01a.png"
+  },
+  "HOS_S_WetFloorSign": {
+    "shape": "bbox",
+    "w": 0.264,
+    "h": 0.231,
+    "r": 0.172,
+    "mesh": "mesh_shapes/HOS_S_WetFloorSign.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/HOS_S_WetFloorSign.png"
+  },
+  "PH_ArmChair_01": {
+    "shape": "bbox",
+    "w": 0.844,
+    "h": 0.762,
+    "r": 0.529,
+    "mesh": "mesh_shapes/PH_ArmChair_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_ArmChair_01.png"
+  },
+  "PH_BarberShopChair_01": {
+    "shape": "bbox",
+    "w": 0.75,
+    "h": 1.324,
+    "r": 0.896,
+    "mesh": "mesh_shapes/PH_BarberShopChair_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_BarberShopChair_01.png"
+  },
+  "PH_ClassicConsole_01": {
+    "shape": "bbox",
+    "w": 1.541,
+    "h": 0.586,
+    "r": 0.819,
+    "mesh": "mesh_shapes/PH_ClassicConsole_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_ClassicConsole_01.png"
+  },
+  "PH_ClassicNightstand_01": {
+    "shape": "bbox",
+    "w": 0.562,
+    "h": 0.422,
+    "r": 0.343,
+    "mesh": "mesh_shapes/PH_ClassicNightstand_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_ClassicNightstand_01.png"
+  },
+  "PH_CoffeeCart_01": {
+    "shape": "bbox",
+    "w": 2.162,
+    "h": 1.068,
+    "r": 1.496,
+    "mesh": "mesh_shapes/PH_CoffeeCart_01.png",
+    "mesh_mpp": 0.004395,
+    "color": "mesh_shapes/color/PH_CoffeeCart_01.png"
+  },
+  "PH_CoffeeTable_01": {
+    "shape": "bbox",
+    "w": 1.535,
+    "h": 0.97,
+    "r": 0.895,
+    "mesh": "mesh_shapes/PH_CoffeeTable_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_CoffeeTable_01.png"
+  },
+  "PH_GothicBed_01": {
+    "shape": "bbox",
+    "w": 1.488,
+    "h": 2.039,
+    "r": 1.276,
+    "mesh": "mesh_shapes/PH_GothicBed_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_GothicBed_01.png"
+  },
+  "PH_GothicCabinet_01": {
+    "shape": "bbox",
+    "w": 1.717,
+    "h": 1.116,
+    "r": 0.995,
+    "mesh": "mesh_shapes/PH_GothicCabinet_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_GothicCabinet_01.png"
+  },
+  "PH_GreenChair_01": {
+    "shape": "bbox",
+    "w": 0.671,
+    "h": 0.662,
+    "r": 0.436,
+    "mesh": "mesh_shapes/PH_GreenChair_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_GreenChair_01.png"
+  },
+  "PH_Ottoman_01": {
+    "shape": "bbox",
+    "w": 0.882,
+    "h": 0.618,
+    "r": 0.499,
+    "mesh": "mesh_shapes/PH_Ottoman_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_Ottoman_01.png"
+  },
+  "PH_Rockingchair_01": {
+    "shape": "bbox",
+    "w": 0.709,
+    "h": 0.832,
+    "r": 0.548,
+    "mesh": "mesh_shapes/PH_Rockingchair_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_Rockingchair_01.png"
+  },
+  "PH_SchoolChair_01": {
+    "shape": "bbox",
+    "w": 0.562,
+    "h": 0.674,
+    "r": 0.433,
+    "mesh": "mesh_shapes/PH_SchoolChair_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_SchoolChair_01.png"
+  },
+  "PH_SchoolDesk_01": {
+    "shape": "bbox",
+    "w": 0.709,
+    "h": 0.533,
+    "r": 0.432,
+    "mesh": "mesh_shapes/PH_SchoolDesk_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_SchoolDesk_01.png"
+  },
+  "PH_Sofa_01": {
+    "shape": "bbox",
+    "w": 1.567,
+    "h": 0.656,
+    "r": 0.832,
+    "mesh": "mesh_shapes/PH_Sofa_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_Sofa_01.png"
+  },
+  "PH_WoodenChair_01": {
+    "shape": "bbox",
+    "w": 0.686,
+    "h": 0.656,
+    "r": 0.432,
+    "mesh": "mesh_shapes/PH_WoodenChair_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_WoodenChair_01.png"
+  },
+  "PH_WoodenTable_01": {
+    "shape": "bbox",
+    "w": 1.799,
+    "h": 0.656,
+    "r": 0.938,
+    "mesh": "mesh_shapes/PH_WoodenTable_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_WoodenTable_01.png"
+  },
+  "PH_bar_chair_round_01": {
+    "shape": "bbox",
+    "w": 0.48,
+    "h": 0.483,
+    "r": 0.252,
+    "mesh": "mesh_shapes/PH_bar_chair_round_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_bar_chair_round_01.png"
+  },
+  "PH_chinese_cabinet": {
+    "shape": "bbox",
+    "w": 1.263,
+    "h": 0.545,
+    "r": 0.674,
+    "mesh": "mesh_shapes/PH_chinese_cabinet.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_chinese_cabinet.png"
+  },
+  "PH_chinese_console_table": {
+    "shape": "bbox",
+    "w": 1.72,
+    "h": 0.337,
+    "r": 0.874,
+    "mesh": "mesh_shapes/PH_chinese_console_table.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_chinese_console_table.png"
+  },
+  "PH_chinese_sofa": {
+    "shape": "bbox",
+    "w": 2.285,
+    "h": 0.967,
+    "r": 1.239,
+    "mesh": "mesh_shapes/PH_chinese_sofa.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_chinese_sofa.png"
+  },
+  "PH_chinese_tea_table": {
+    "shape": "bbox",
+    "w": 0.841,
+    "h": 0.835,
+    "r": 0.588,
+    "mesh": "mesh_shapes/PH_chinese_tea_table.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_chinese_tea_table.png"
+  },
+  "PH_drawer_cabinet": {
+    "shape": "bbox",
+    "w": 1.137,
+    "h": 0.486,
+    "r": 0.61,
+    "mesh": "mesh_shapes/PH_drawer_cabinet.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_drawer_cabinet.png"
+  },
+  "PH_painted_wooden_cabinet": {
+    "shape": "bbox",
+    "w": 1.195,
+    "h": 0.615,
+    "r": 0.659,
+    "mesh": "mesh_shapes/PH_painted_wooden_cabinet.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_painted_wooden_cabinet.png"
+  },
+  "PH_painted_wooden_shelves": {
+    "shape": "bbox",
+    "w": 0.51,
+    "h": 0.366,
+    "r": 0.442,
+    "mesh": "mesh_shapes/PH_painted_wooden_shelves.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_painted_wooden_shelves.png"
+  },
+  "PH_painted_wooden_sofa": {
+    "shape": "bbox",
+    "w": 2.449,
+    "h": 0.785,
+    "r": 1.291,
+    "mesh": "mesh_shapes/PH_painted_wooden_sofa.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_painted_wooden_sofa.png"
+  },
+  "PH_steel_frame_shelves_01": {
+    "shape": "bbox",
+    "w": 1.096,
+    "h": 0.498,
+    "r": 0.6,
+    "mesh": "mesh_shapes/PH_steel_frame_shelves_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_steel_frame_shelves_01.png"
+  },
+  "PH_vintage_cabinet_01": {
+    "shape": "bbox",
+    "w": 2.021,
+    "h": 0.665,
+    "r": 1.065,
+    "mesh": "mesh_shapes/PH_vintage_cabinet_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_vintage_cabinet_01.png"
+  },
+  "PH_wooden_bookshelf_worn": {
+    "shape": "bbox",
+    "w": 1.371,
+    "h": 0.58,
+    "r": 0.741,
+    "mesh": "mesh_shapes/PH_wooden_bookshelf_worn.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_wooden_bookshelf_worn.png"
+  },
+  "PH_wooden_display_shelves_01": {
+    "shape": "bbox",
+    "w": 1.072,
+    "h": 0.369,
+    "r": 0.565,
+    "mesh": "mesh_shapes/PH_wooden_display_shelves_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/PH_wooden_display_shelves_01.png"
+  },
+  "WH_SM_BarelPlastic_D_01": {
+    "shape": "bbox",
+    "w": 0.293,
+    "h": 0.293,
+    "r": 0.146,
+    "mesh": "mesh_shapes/WH_SM_BarelPlastic_D_01.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_SM_BarelPlastic_D_01.png"
+  },
+  "WH_SM_BucketPlastic_B": {
+    "shape": "bbox",
+    "w": 0.609,
+    "h": 0.727,
+    "r": 0.389,
+    "mesh": "mesh_shapes/WH_SM_BucketPlastic_B.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_SM_BucketPlastic_B.png"
+  },
+  "WH_SM_CratePlastic_C_03": {
+    "shape": "bbox",
+    "w": 0.434,
+    "h": 0.589,
+    "r": 0.352,
+    "mesh": "mesh_shapes/WH_SM_CratePlastic_C_03.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_SM_CratePlastic_C_03.png"
+  },
+  "WH_SM_FireExtinguisher_02": {
+    "shape": "bbox",
+    "w": 0.117,
+    "h": 0.281,
+    "r": 0.18,
+    "mesh": "mesh_shapes/WH_SM_FireExtinguisher_02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_SM_FireExtinguisher_02.png"
+  },
+  "WH_SM_PaletteA_02": {
+    "shape": "bbox",
+    "w": 1.216,
+    "h": 0.803,
+    "r": 0.713,
+    "mesh": "mesh_shapes/WH_SM_PaletteA_02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_SM_PaletteA_02.png"
+  },
+  "WH_SM_PushcartA_02": {
+    "shape": "bbox",
+    "w": 0.926,
+    "h": 1.646,
+    "r": 0.922,
+    "mesh": "mesh_shapes/WH_SM_PushcartA_02.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_SM_PushcartA_02.png"
+  },
+  "WH_S_TrafficCone": {
+    "shape": "bbox",
+    "w": 0.334,
+    "h": 0.334,
+    "r": 0.201,
+    "mesh": "mesh_shapes/WH_S_TrafficCone.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_S_TrafficCone.png"
+  },
+  "WH_S_WetFloorSign": {
+    "shape": "bbox",
+    "w": 0.264,
+    "h": 0.229,
+    "r": 0.172,
+    "mesh": "mesh_shapes/WH_S_WetFloorSign.png",
+    "mesh_mpp": 0.00293,
+    "color": "mesh_shapes/color/WH_S_WetFloorSign.png"
   }
 }

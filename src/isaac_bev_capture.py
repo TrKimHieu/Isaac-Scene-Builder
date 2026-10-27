@@ -3,13 +3,16 @@ isaac_bev_capture.py - Capture top-down BEV images of props in Isaac Sim.
 
 Pipeline (batch-spawn + hide/show):
   - A temp scene: an emissive WHITE FLOOR plane + dome/key light -> white, even background.
-  - Camera TRUC GIAO (orthographic) nhin thang xuong, khung khit o 3x3 m
+  - Camera TRUC GIAO (orthographic) nhin thang xuong, centered on the prop origin
     (no vanishing point). USD: view width = aperture * 0.1 -> aperture = 30 for 3 m.
+    The frame is chosen PER PROP from its bbox (FRAME_STEPS: 3, 4.5, 6, 9, 12, 18 m)
+    so big props are not clipped; <asset>.json next to the PNG records frame_m.
   - Load props in BATCHES (CHUNK), spawn at origin (0,0,0) all HIDDEN; then SHOW one by one
     to capture, then HIDE again; clear the batch when done (free RAM).
   - Snap background to pure white (from the 4 corners) -> "anything non-white is object".
-  - Save PNG to output/mesh_shapes/renders/<asset>.png
-  => Then open shape_editor.py to draw bounding boxes + cut shapes from these images.
+  - Save PNG (true colors, white bg) + <asset>.json to output/mesh_shapes/renders/
+  => Then build_furniture_shapes.py measures bbox/sphere and cuts the mesh mask + the
+     colored top-down cut-out (or shape_editor.py to do it by hand).
 
 *** PHAI CHAY BANG PYTHON CUA ISAAC SIM ***, vi du (Windows):
     C:\IsaacProjects\isaacsim\python.bat src/isaac_bev_capture.py --all
@@ -26,7 +29,8 @@ import argparse
 from config import (PROP_DIRS, RENDER_DIR, CELL, RESOLUTION, CAM_HEIGHT,
                     APERTURE_SCALE, VERTICAL_FLIP, SETTLE_FRAMES, SHOW_FRAMES,
                     CHUNK_SIZE, GROUND_SIZE, PROJECT_ROOT)
-from utils import safe_name as _safe_name
+from utils import safe_name as _safe_name, load_library
+import shape_tools as st
 
 
 def parse_args():
@@ -34,7 +38,17 @@ def parse_args():
     ap.add_argument("asset", nargs="?", default=None, help="Name of one prop (no .usd). Leave empty + --all to capture everything.")
     ap.add_argument("--all", action="store_true", help="Capture all props across every PROP_DIRS.")
     ap.add_argument("--extra", action="store_true", help="Only capture props in assets/extra/ (newly downloaded assets).")
+    ap.add_argument("--office", action="store_true", help="Only capture the Office furniture palette (FURNITURE + EXTRA_FURNITURE).")
+    ap.add_argument("--library", action="store_true", help="Only capture the curated asset library (data/asset_manifest.json).")
     ap.add_argument("--res", type=int, default=RESOLUTION)
+    ap.add_argument("--chunk", type=int, default=CHUNK_SIZE,
+                    help="Props loaded on the GPU per batch (lower it on small-VRAM GPUs, e.g. 1-4).")
+    ap.add_argument("--limit", type=int, default=0,
+                    help="Capture at most N props this run (0 = all). Used by tools/capture_all.py.")
+    ap.add_argument("--exclude-file", default=None,
+                    help="Text file with prop names to skip (one per line), e.g. props that crash.")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="Skip props that already have a render (resume an interrupted run).")
     ap.add_argument("--out", default=RENDER_DIR)
     return ap.parse_args()
 
@@ -54,6 +68,8 @@ def _index_props():
             if f.lower().endswith(".usd"):
                 n = os.path.splitext(f)[0]
                 idx.setdefault(n, os.path.join(d, f))
+    for n, e in load_library().items():      # curated asset library (nested dirs)
+        idx.setdefault(n, e["abs"])
     return idx
 
 
@@ -71,6 +87,11 @@ def asset_list(args):
         extra_dir = PROP_DIRS[1] if len(PROP_DIRS) > 1 else None
         names = sorted(os.path.splitext(f)[0] for f in os.listdir(extra_dir)
                        if f.lower().endswith(".usd")) if os.path.isdir(extra_dir) else []
+    elif args.office:
+        from config import FURNITURE, EXTRA_FURNITURE
+        names = list(dict.fromkeys([n for (n, _r) in FURNITURE] + list(EXTRA_FURNITURE)))
+    elif args.library:
+        names = sorted(load_library().keys())
     elif args.all:
         names = sorted(idx.keys())            # all props across every dir
     else:
@@ -94,6 +115,15 @@ def main():
     out_dir = args.out
     os.makedirs(out_dir, exist_ok=True)
     targets = asset_list(args)
+    if args.skip_existing:
+        targets = [(n, p) for (n, p) in targets
+                   if not os.path.isfile(os.path.join(out_dir, n + ".png"))]
+    if args.exclude_file and os.path.isfile(args.exclude_file):
+        with open(args.exclude_file, encoding="utf-8") as fh:
+            excl = {ln.strip() for ln in fh if ln.strip()}
+        targets = [(n, p) for (n, p) in targets if n not in excl]
+    if args.limit > 0:
+        targets = targets[:args.limit]
     if not targets:
         print("No props to capture.")
         return
@@ -138,9 +168,11 @@ def main():
     cam_prim = stage.GetPrimAtPath("/World/TopCam")
     _c = UsdGeom.Camera(cam_prim)
     _c.GetProjectionAttr().Set("orthographic")
-    ap = CELL * APERTURE_SCALE
-    _c.GetHorizontalApertureAttr().Set(ap)
-    _c.GetVerticalApertureAttr().Set(ap)
+    def set_frame(frame_m):
+        ap = frame_m * APERTURE_SCALE
+        _c.GetHorizontalApertureAttr().Set(ap)
+        _c.GetVerticalApertureAttr().Set(ap)
+    set_frame(CELL)
     _c.CreateClippingRangeAttr().Set(Gf.Vec2f(0.01, 100000.0))
 
     # 4b) Render via Replicator (reliable for headless): render_product + rgb annotator
@@ -174,10 +206,12 @@ def main():
                                    [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
 
     # 5) Capture per BATCH: spawn the whole batch (all hidden) -> show/capture/hide each -> clear batch
-    for base in range(0, total, CHUNK_SIZE):
-        chunk = targets[base:base + CHUNK_SIZE]
+    chunk_size = max(1, args.chunk)
+    for base in range(0, total, chunk_size):
+        chunk = targets[base:base + chunk_size]
         spawned = []
         for name, usd_path in chunk:
+            print("[start] %s" % name, flush=True)
             ppath = props_root + "/" + _safe_name(name)
             # Isaac auto-normalizes units (metersPerUnit) on reference -> no manual scale
             add_reference_to_stage(usd_path=usd_path.replace("\\", "/"), prim_path=ppath)
@@ -189,6 +223,16 @@ def main():
         for name, ppath in spawned:
             prim = stage.GetPrimAtPath(ppath)
             UsdGeom.Imageable(prim).MakeVisible()
+            bbox_cache.Clear()
+            bmin, bmax = (-CELL / 2, -CELL / 2, 0), (CELL / 2, CELL / 2, 0)
+            try:
+                rng = bbox_cache.ComputeWorldBound(prim).ComputeAlignedRange()
+                if not rng.IsEmpty():
+                    bmin, bmax = rng.GetMin(), rng.GetMax()
+            except Exception as e:
+                print("[warn] bbox %s: %s" % (name, e), flush=True)
+            frame_m = st.pick_frame(bmin, bmax)
+            set_frame(frame_m)
             render(SHOW_FRAMES)
 
             if debug:
@@ -214,10 +258,14 @@ def main():
             img = _snap_background_white(raw, np, Image)
             if VERTICAL_FLIP:
                 img = img.transpose(Image.FLIP_TOP_BOTTOM)
-            img.save(os.path.join(out_dir, name + ".png"))
+            png = os.path.join(out_dir, name + ".png")
+            img.save(png)
+            st.write_render_meta(png, frame_m, res=res,
+                                 bbox_min=[round(float(v), 4) for v in bmin],
+                                 bbox_max=[round(float(v), 4) for v in bmax])
             UsdGeom.Imageable(prim).MakeInvisible()
             n_done += 1
-            print("[ok] %d/%d %s.png" % (n_done, total, name), flush=True)
+            print("[ok] %d/%d %s.png (frame %.1f m)" % (n_done, total, name, frame_m), flush=True)
 
         # clear the batch to free RAM before the next one
         for _, ppath in spawned:

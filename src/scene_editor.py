@@ -7,8 +7,12 @@ Usage:
 3 tools:
   FLOOR (1) - Click near a CELL CENTER: empty -> floor -> floor+light -> empty.
               DRAG to fill a rectangular floor area. Right-click removes a cell.
-  WALL  (2) - Click near a CELL EDGE: none -> wall -> wall-door -> none.
-              DRAG along a row/column to draw a long wall. Right-click clears an edge.
+  WALL  (2) - Click near a CELL EDGE: cycles none -> wall -> door -> window -> glass ->
+              opening. DRAG along a row/column paints the EDGE TYPE chosen in the panel.
+              O over a door toggles it open/closed. Right-click clears an edge.
+  STYLE (4) - Paint a room style (office / hospital / warehouse / home) on floor cells:
+              click or DRAG a rectangle; pick the style in the panel. Walls take the style
+              of the room each face looks into.
   FURNITURE (3) - Pick a prop in the palette, click empty space to place (auto-selected).
               Click a placed prop to SELECT it; HOLD left + drag to MOVE it.
               TRANSFORM panel: edit X/Y/Yaw and pick a SHAPE (BBox / Sphere / Mesh) -
@@ -21,6 +25,7 @@ Shortcuts:
   1 floor | 2 wall | 3/F furniture | Tab switch tool | W auto-walls | C clear
   S save USD (sceneX.usd) | Ctrl+S save map JSON | L load latest map
   B  export BEV (CSV + SVG + PNG/PGM) into output/bev/
+  V  mesh view: footprint mask <-> colored top-down capture
   + / -  resize grid | R rotate furniture 5 deg (selected or about-to-place)
   F11  toggle fullscreen | drag window edge to resize
   Esc  exit fullscreen -> close menu -> deselect -> back to floor
@@ -36,7 +41,11 @@ import pygame
 import scene_builder as sb
 import bev_export as bev
 
-from config import (PROJECT_ROOT, MAPS_DIR, CELL, SNAP as _SNAP, FURNITURE_CATEGORIES)
+from config import (PROJECT_ROOT, MAPS_DIR, CELL, SNAP as _SNAP, FURNITURE_CATEGORIES,
+                    EDGE_NAMES, EDGE_CYCLE, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS,
+                    EDGE_OPENING, STYLES, DEFAULT_STYLE, STYLE_COLORS, DOOR_DEFAULT,
+                    WINDOW_COL, GLASS_COL)
+import architecture as arch
 from config import (C0, C1, C2, C3, C4, MESH_MARK, BG, GRID_LINE, FLOOR_COL,
                     FLOOR_HOVER, LIGHT_COL, WALL_COL, DOOR_COL, HOVER_EDGE,
                     PANEL_BG, BTN, BTN_HOVER, BTN_ACTIVE, TEXT, TEXT_DIM,
@@ -76,7 +85,12 @@ class Editor:
         self.tool = "floor"    # "floor" | "wall" | "furniture"
         self.palette = sb.available_furniture()
         self.pal_sel = 0
-        self.structure = {}    # override prop cau truc: {"wall":..,"floor":..}
+        self.structure = {}    # legacy prop overrides: {"wall":..,"floor":..}
+        self.styles = {}       # (i,j) -> room style (unset = DEFAULT_STYLE)
+        self.door_state = {}   # "v:i,j" -> "open" | "closed" (unset = door_default)
+        self.door_default = DOOR_DEFAULT
+        self.edge_type = EDGE_WALL          # what a wall-tool drag paints
+        self.paint_style = "hospital"       # what the style tool paints
         self.place_shape = "bbox"   # default shape when placing a new prop
         self.cur_yaw = 0.0
         self.msg = "Ready. FLOOR tool: click / drag to paint floor."
@@ -100,7 +114,8 @@ class Editor:
 
         self.drag_start = None       # ("cell",i,j) | ("edge",kind,i,j)
         self.drag_cur = None         # current (mx,my) while dragging
-        self._mesh_cache = {}        # asset -> (mask_surface, w_m, h_m) | None
+        self._mesh_cache = {}        # (asset, color) -> (surface, w_m, h_m) | None
+        self.color_view = False      # V: draw mesh props with their colored top-down image
 
         # zoom / pan (view)
         self.zoom = 1.0
@@ -146,9 +161,18 @@ class Editor:
         self.msg = "Redone."
 
     # ---- furniture palette filter ----
+    def palette_categories(self):
+        """Category tabs (curated + asset library), computed once."""
+        if getattr(self, "_categories", None) is None:
+            try:
+                self._categories = sb.palette_categories()
+            except Exception:
+                self._categories = dict(FURNITURE_CATEGORIES)
+        return self._categories
+
     def filtered_palette(self):
         """Return the palette filtered by category + search text."""
-        cats = FURNITURE_CATEGORIES
+        cats = self.palette_categories()
         if self._pal_cat != "All" and self._pal_cat in cats:
             allowed = set(cats[self._pal_cat])
             items = [(n, r) for (n, r) in self.palette if n in allowed]
@@ -156,7 +180,10 @@ class Editor:
             items = list(self.palette)
         if self._pal_filter:
             q = self._pal_filter.lower()
-            items = [(n, r) for (n, r) in items if q in n.lower()]
+            lib = sb.load_library()
+            items = [(n, r) for (n, r) in items if q in n.lower()
+                     or q in lib.get(n, {}).get("env", "")
+                     or q in lib.get(n, {}).get("category", "")]
         return items
 
     # ---- layout / view ----
@@ -287,11 +314,13 @@ class Editor:
         if not (0 <= i <= maxi and 0 <= j <= maxj):
             return
         self._snapshot()
-        s = (d.get((i, j), 0) + 1) % 3
+        cur = d.get((i, j), 0)
+        s = EDGE_CYCLE[(EDGE_CYCLE.index(cur) + 1) % len(EDGE_CYCLE)] if cur in EDGE_CYCLE else 0
         if s == 0:
             d.pop((i, j), None)
         else:
             d[(i, j)] = s
+        self.msg = "Edge: %s" % EDGE_NAMES.get(s, "none")
 
     def erase_cell(self, i, j):
         if (i, j) in self.cells:
@@ -318,7 +347,7 @@ class Editor:
         self.msg = "Floor: added %d cells." % n
 
     def draw_wall_run(self, start_edge, mx, my):
-        """Draw a wall run (state 1) from the start edge to the cursor along the main axis."""
+        """Paint self.edge_type on a run of edges from the start edge to the cursor."""
         self._snapshot()
         kind, i0, j0 = start_edge
         end = self.nearest_edge(mx, my)
@@ -328,17 +357,48 @@ class Editor:
             # fixed column i0, run along j
             j1 = end[2] if end[0] == "vedge" else j0
             for j in range(min(j0, j1), max(j0, j1) + 1):
-                if 0 <= i0 <= self.nx and 0 <= j <= self.ny - 1 and d.get((i0, j), 0) == 0:
-                    d[(i0, j)] = 1
+                if 0 <= i0 <= self.nx and 0 <= j <= self.ny - 1 \
+                        and d.get((i0, j)) != self.edge_type:
+                    d[(i0, j)] = self.edge_type
                     n += 1
         else:
             # fixed row j0, run along i
             i1 = end[1] if end[0] == "hedge" else i0
             for i in range(min(i0, i1), max(i0, i1) + 1):
-                if 0 <= i <= self.nx - 1 and 0 <= j0 <= self.ny and d.get((i, j0), 0) == 0:
-                    d[(i, j0)] = 1
+                if 0 <= i <= self.nx - 1 and 0 <= j0 <= self.ny \
+                        and d.get((i, j0)) != self.edge_type:
+                    d[(i, j0)] = self.edge_type
                     n += 1
-        self.msg = "Wall: added %d segments." % n
+        self.msg = "%s: %d segments." % (EDGE_NAMES[self.edge_type], n)
+
+    def paint_style_rect(self, i0, j0, i1, j1):
+        """Paint self.paint_style on every floor cell in the box."""
+        self._snapshot()
+        lo_i, hi_i = sorted((i0, i1))
+        lo_j, hi_j = sorted((j0, j1))
+        n = 0
+        for i in range(max(0, lo_i), min(self.nx, hi_i + 1)):
+            for j in range(max(0, lo_j), min(self.ny, hi_j + 1)):
+                if self.cells.get((i, j), 0) >= 1:
+                    if self.paint_style == DEFAULT_STYLE:
+                        self.styles.pop((i, j), None)
+                    else:
+                        self.styles[(i, j)] = self.paint_style
+                    n += 1
+        self.msg = "Style %s: %d cells." % (STYLES[self.paint_style]["label"], n)
+
+    def toggle_door(self, mx, my):
+        """Open <-> closed for the door edge under the cursor."""
+        kind, i, j = self.nearest_edge(mx, my)
+        d = self.vedges if kind == "vedge" else self.hedges
+        if d.get((i, j)) != EDGE_DOOR:
+            self.msg = "No door here."
+            return
+        self._snapshot()
+        key = arch.edge_key(kind, i, j)
+        is_open = arch.door_is_open(self.map_data_light(), kind[0], i, j)
+        self.door_state[key] = "closed" if is_open else "open"
+        self.msg = "Door %s" % self.door_state[key]
 
     def auto_walls(self):
         ve, he = sb.boundary_edges(self.cells)
@@ -520,6 +580,9 @@ class Editor:
             "hedges": {"%d,%d" % k: v for k, v in self.hedges.items()},
             "furniture": [dict(f) for f in self.furniture],
             "structure": dict(self.structure),
+            "styles": {"%d,%d" % k: v for k, v in self.styles.items()},
+            "door_default": self.door_default,
+            "door_state": dict(self.door_state),
         }
 
     def load_map_data(self, m):
@@ -529,6 +592,9 @@ class Editor:
         self.hedges = sb._ikey(m.get("hedges"))
         self.furniture = list(m.get("furniture", []))
         self.structure = dict(m.get("structure") or {})
+        self.styles = sb._ikey(m.get("styles"))
+        self.door_state = dict(m.get("door_state") or {})
+        self.door_default = m.get("door_default") or DOOR_DEFAULT
         self.deselect()
         self.ctx_menu = None
         self._recalc_layout()
@@ -698,7 +764,7 @@ class Editor:
                 self.open_ctx_menu(mx, my)
             return
         # FLOOR / WALL: left starts a drag; right clears a single cell/edge
-        if self.tool == "floor":
+        if self.tool in ("floor", "style"):
             if button == 1:
                 self.drag_start = self.hit_cell(mx, my)
                 self.drag_cur = (mx, my)
@@ -748,7 +814,9 @@ class Editor:
         if start[0] == "cell":
             _, i0, j0 = start
             _, i1, j1 = self.hit_cell(mx, my)
-            if (i0, j0) == (i1, j1):
+            if self.tool == "style":
+                self.paint_style_rect(i0, j0, i1, j1)
+            elif (i0, j0) == (i1, j1):
                 self.cycle_cell(i0, j0)     # click don -> giu chu ky 3 trang thai
             else:
                 self.fill_floor_rect(i0, j0, i1, j1)
@@ -799,6 +867,17 @@ class Editor:
         if key == "floor": self.switch_tool("floor")
         elif key == "wall": self.switch_tool("wall")
         elif key == "furni": self.switch_tool("furniture")
+        elif key == "style": self.switch_tool("style")
+        elif key.startswith("et_"):
+            self.edge_type = int(key[3:])
+            self.msg = "Wall drag paints: %s" % EDGE_NAMES[self.edge_type]
+        elif key.startswith("st_"):
+            self.paint_style = key[3:]
+            self.msg = "Style brush: %s" % STYLES[self.paint_style]["label"]
+        elif key == "door_def":
+            self._snapshot()
+            self.door_default = "closed" if self.door_default == "open" else "open"
+            self.msg = "Doors default: %s" % self.door_default
         elif key == "undo": self.undo()
         elif key == "redo": self.redo()
         elif key == "walls": self.auto_walls()
@@ -857,6 +936,9 @@ class Editor:
             return
         if k == pygame.K_F11: self.toggle_fullscreen()
         elif k == pygame.K_1: self.switch_tool("floor")
+        elif k == pygame.K_4: self.switch_tool("style")
+        elif k == pygame.K_o and self.tool == "wall":
+            self.toggle_door(*pygame.mouse.get_pos())
         elif k == pygame.K_2: self.switch_tool("wall")
         elif k in (pygame.K_3, pygame.K_f): self.switch_tool("furniture")
         elif k == pygame.K_TAB:
@@ -870,6 +952,9 @@ class Editor:
         elif k == pygame.K_y and (mods & pygame.KMOD_CTRL): self.redo()
         elif k == pygame.K_l: self.load_latest_map()
         elif k == pygame.K_b: self.export_bev()
+        elif k == pygame.K_v:
+            self.color_view = not self.color_view
+            self.msg = "Mesh view: %s" % ("colored top-down" if self.color_view else "footprint mask")
         elif k == pygame.K_r:
             if self.selected is not None:
                 self.rotate_furniture(self.selected, 5)
@@ -917,14 +1002,14 @@ class Editor:
         in_grid = self.in_grid(mx, my)
         hover = None
         if in_grid and self.drag_start is None:
-            if self.tool == "floor":
+            if self.tool in ("floor", "style"):
                 hover = self.hit_cell(mx, my)
             elif self.tool == "wall":
                 hover = self.nearest_edge(mx, my)
         # cells
         for (i, j), s in self.cells.items():
             r = self.cell_rect(i, j)
-            pygame.draw.rect(self.screen, FLOOR_COL, r)
+            pygame.draw.rect(self.screen, STYLE_COLORS.get(self.styles.get((i, j)), FLOOR_COL), r)
             if s == 2:
                 pygame.draw.circle(self.screen, LIGHT_COL, r.center, max(4, int(self.cs) // 6))
         # hover cell
@@ -990,50 +1075,74 @@ class Editor:
         if s == -1:  # hover
             pygame.draw.line(self.screen, HOVER_EDGE, p0, p1, w)
             return
-        col = DOOR_COL if s == 2 else WALL_COL
-        if s == 2:
-            # wall with door: gap in the middle
-            mxp = ((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2)
-            a = (p0[0] * 0.7 + p1[0] * 0.3, p0[1] * 0.7 + p1[1] * 0.3)
-            b = (p0[0] * 0.3 + p1[0] * 0.7, p0[1] * 0.3 + p1[1] * 0.7)
+        a = (p0[0] * 0.65 + p1[0] * 0.35, p0[1] * 0.65 + p1[1] * 0.35)
+        b = (p0[0] * 0.35 + p1[0] * 0.65, p0[1] * 0.35 + p1[1] * 0.65)
+        if s in (EDGE_DOOR, EDGE_OPENING):
+            # door / opening: gap in the middle (0.94 m clear)
             pygame.draw.line(self.screen, WALL_COL, p0, a, w)
             pygame.draw.line(self.screen, WALL_COL, b, p1, w)
-            pygame.draw.circle(self.screen, DOOR_COL, (int(mxp[0]), int(mxp[1])), max(3, w))
+            if s == EDGE_DOOR:
+                if arch.door_is_open(self.map_data_light(), kind[0], i, j):
+                    # leaf swung open from the hinge into the +X (vedge) / -Y (hedge) room
+                    n = (1, 0) if kind == "vedge" else (0, -1)
+                    L = 0.94 / sb.CELL * self.cs
+                    pygame.draw.line(self.screen, DOOR_COL, b,
+                                     (b[0] + n[0] * L, b[1] + n[1] * L), max(2, w // 2))
+                else:
+                    pygame.draw.line(self.screen, DOOR_COL, a, b, max(2, w // 2))
+        elif s == EDGE_WINDOW:
+            pygame.draw.line(self.screen, WALL_COL, p0, p1, w)
+            pygame.draw.line(self.screen, WINDOW_COL, p0, p1, max(2, w // 2))
+        elif s == EDGE_GLASS:
+            pygame.draw.line(self.screen, GLASS_COL, p0, p1, max(2, w // 3))
         else:
-            pygame.draw.line(self.screen, col, p0, p1, w)
+            pygame.draw.line(self.screen, WALL_COL, p0, p1, w)
 
-    def _get_mesh_surface(self, asset):
-        """Footprint mask surface from mesh_shapes/<asset>.png (cached).
+    def map_data_light(self):
+        """Just what architecture.door_is_open() needs (cheap, called per drawn door)."""
+        return {"door_default": self.door_default, "door_state": self.door_state}
 
-        Returns (mask_surface, w_m, h_m) - white object / transparent background -
-        or None if there is no mesh. The mask is cropped tight to the object.
+    def _get_mesh_surface(self, asset, color=False):
+        """Footprint surface from mesh_shapes/<asset>.png (cached).
+
+        color=False: white object / transparent background mask (tinted at draw time).
+        color=True : the colored top-down capture mesh_shapes/color/<asset>.png.
+        Returns (surface, w_m, h_m) cropped tight to the object, or None if missing.
+        Scale comes from props_shapes.json 'mesh_mpp' (legacy masks span one CELL).
         """
-        if asset in self._mesh_cache:
-            return self._mesh_cache[asset]
+        key = (asset, bool(color))
+        if key in self._mesh_cache:
+            return self._mesh_cache[key]
         result = None
         path = os.path.join(bev.MESH_DIR, asset + ".png")
-        if os.path.isfile(path):
+        cpath = os.path.join(bev.MESH_DIR, "color", asset + ".png")
+        if os.path.isfile(path) and (not color or os.path.isfile(cpath)):
             try:
                 from PIL import Image
                 import numpy as np
+                import shape_tools as st
                 im = Image.open(path).convert("L")
                 a = np.asarray(im)
                 ys, xs = np.where(a < 128)          # object = pixel toi
                 if len(xs) > 0:
                     x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
-                    obj = a[y0:y1, x0:x1] < 128
-                    ch, cw = obj.shape
-                    rgba = np.zeros((ch, cw, 4), dtype=np.uint8)
-                    rgba[obj] = (255, 255, 255, 255)   # white, tinted at draw time
+                    if color:
+                        rgba = np.ascontiguousarray(
+                            np.asarray(Image.open(cpath).convert("RGBA"))[y0:y1, x0:x1])
+                    else:
+                        obj = a[y0:y1, x0:x1] < 128
+                        rgba = np.zeros(obj.shape + (4,), dtype=np.uint8)
+                        rgba[obj] = (255, 255, 255, 255)   # white, tinted at draw time
+                    ch, cw = rgba.shape[:2]
                     surf = pygame.image.frombuffer(rgba.tobytes(), (cw, ch), "RGBA").convert_alpha()
-                    scl = min(1.0, 160.0 / max(ch, cw))   # downscale to keep it light
+                    scl = min(1.0, (320.0 if color else 160.0) / max(ch, cw))
                     if scl < 1.0:
                         surf = pygame.transform.smoothscale(surf, (max(1, int(cw * scl)), max(1, int(ch * scl))))
-                    mpp = sb.CELL / float(im.width)
+                    mpp = st.mesh_mpp(load_prop_shapes().get(asset), im.width)
                     result = (surf, (x1 - x0) * mpp, (y1 - y0) * mpp)
             except Exception:
                 result = None
-        self._mesh_cache[asset] = result
+        self._mesh_cache[key] = result
         return result
 
     def _rot_rect_pts(self, cx, cy, wpx, hpx, yaw_deg):
@@ -1047,7 +1156,12 @@ class Editor:
         yaw = f.get("yaw", 0.0)
 
         if shape == "mesh":
-            mesh = self._get_mesh_surface(f["asset"])
+            mesh = None
+            if self.color_view:
+                mesh = self._get_mesh_surface(f["asset"], color=True)
+            colored = mesh is not None
+            if mesh is None:
+                mesh = self._get_mesh_surface(f["asset"])
             if mesh is None:
                 # no mesh data -> mark with a red "?"
                 if selected:
@@ -1061,7 +1175,8 @@ class Editor:
             th = max(2, int(h_m / sb.CELL * self.cs))
             surf = pygame.transform.smoothscale(mask, (tw, th))
             surf = surf.copy()
-            surf.fill(fill + (255,), special_flags=pygame.BLEND_RGBA_MULT)  # tint by state
+            if not colored:
+                surf.fill(fill + (255,), special_flags=pygame.BLEND_RGBA_MULT)  # tint by state
             surf = pygame.transform.rotate(surf, -yaw)                       # yaw: y-xuong -> quay am
             rect = surf.get_rect(center=(int(sx), int(sy)))
             if selected:
@@ -1094,18 +1209,22 @@ class Editor:
         pygame.draw.line(self.screen, ACCENT if selected else BG, (sx, sy), (ex, ey), 2)
 
     def _btn_groups(self):
-        wall = self.structure.get("wall", sb.STRUCTURE_CHOICES["wall"][0])
-        floor = self.structure.get("floor", sb.STRUCTURE_CHOICES["floor"][0])
-        return [
-            ("TOOLS", [("floor", "1 Floor"), ("wall", "2 Wall"), ("furni", "3 Furniture")]),
+        groups = [
+            ("TOOLS", [("floor", "1 Floor"), ("wall", "2 Wall"), ("furni", "3 Furniture"),
+                       ("style", "4 Style")]),
             ("HOA TAC", [("undo", "Undo (Ctrl+Z)"), ("redo", "Redo (Ctrl+Y)")]),
             ("GRID", [("walls", "Auto-walls (W)"), ("clear", "Clear (C)"),
                       ("gx-", "X -"), ("gx+", "X +"), ("gy-", "Y -"), ("gy+", "Y +")]),
-            ("STRUCTURE (3D)", [("cyc_wall", "Wall: " + wall.replace("SM_", "")),
-                                    ("cyc_floor", "Floor: " + floor.replace("SM_", ""))]),
             ("FILE", [("usd", "SAVE .usd (S)"), ("export", "Export BEV (B)"),
                      ("savemap", "Save map (Ctrl+S)"), ("load", "Load map (L)")]),
         ]
+        if self.tool == "wall":
+            groups.insert(1, ("EDGE TYPE (drag)", [("et_%d" % e, EDGE_NAMES[e])
+                                                   for e in EDGE_CYCLE if e] +
+                              [("door_def", "Doors: " + self.door_default)]))
+        elif self.tool == "style":
+            groups.insert(1, ("ROOM STYLE", [("st_" + k, v["label"]) for k, v in STYLES.items()]))
+        return groups
 
     def draw_panel(self):
         px = self.win_w - PANEL_W
@@ -1129,22 +1248,28 @@ class Editor:
         for title, defs in self._btn_groups():
             self.screen.blit(self.font_s.render(title, True, TEXT_DIM), (bx, y)); y += 18
             i = 0
+            col = 0                      # column of the next half-width button
             while i < len(defs):
                 key, label = defs[i]
-                small = key in ("gx-", "gx+", "gy-", "gy+")
+                small = key in ("gx-", "gx+", "gy-", "gy+") or key[:3] in ("et_", "st_")
                 if small:
                     bw = (bw_full - 12) // 2
-                    col = i % 2
                     rect = pygame.Rect(bx + col * (bw + 12), y, bw, 26)
                     self._draw_button(rect, key, label, mx, my)
                     if col == 1:
                         y += 32
+                    col = 1 - col
                     i += 1
                     continue
+                if col == 1:                 # finish a half-filled row first
+                    y += 32
+                    col = 0
                 rect = pygame.Rect(bx, y, bw_full, 30)
                 self._draw_button(rect, key, label, mx, my)
                 y += 36
                 i += 1
+            if col == 1:
+                y += 32
             y += 8
             pygame.draw.line(self.screen, SECTION_LINE, (px + 16, y - 2), (px + PANEL_W - 16, y - 2))
             y += 6
@@ -1166,7 +1291,7 @@ class Editor:
         self.screen.blit(self.font.render("Furniture:", True, TEXT_DIM), (px + 16, y)); y += 22
 
         # category tabs
-        categories = ["All"] + list(FURNITURE_CATEGORIES.keys())
+        categories = ["All"] + list(self.palette_categories().keys())
         tab_x = px + 16
         for cat_name in categories:
             active = (cat_name == self._pal_cat)
@@ -1304,8 +1429,9 @@ class Editor:
         return y + row_h + 6
 
     def _draw_button(self, rect, key, label, mx, my, danger=False):
-        tool_of = {"floor": "floor", "wall": "wall", "furni": "furniture"}
-        active = tool_of.get(key) == self.tool
+        tool_of = {"floor": "floor", "wall": "wall", "furni": "furniture", "style": "style"}
+        active = (tool_of.get(key) == self.tool or key == "et_%d" % self.edge_type
+                  or key == "st_" + self.paint_style)
         hover = rect.collidepoint(mx, my)
         if danger:
             # Delete button: dark ground (C0) to stand out, brightens on hover

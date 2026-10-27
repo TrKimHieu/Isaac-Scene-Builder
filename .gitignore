@@ -34,3 +34,6 @@ output/mesh_shapes/
 
 # Local virtualenv
 .venv/
+
+# Curated asset library (tools/asset_library.py fetch) - NOT versioned
+assets/library/

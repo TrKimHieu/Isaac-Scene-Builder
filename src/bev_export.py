@@ -22,6 +22,8 @@ import csv
 import json
 
 import scene_builder as sb
+import shape_tools as st
+import architecture as arch
 
 from config import (CELL, BEV_DIR, MESH_DIR, SHAPES_JSON, FURNITURE,
                     BEV_SCALE, WALL_M, DOOR_GAP, UNKNOWN, FREE, OCC)
@@ -45,8 +47,11 @@ def _bbox_corners(cx, cy, w, h, yaw_deg):
 # ----------------------------------------------------------------------------
 # Shape helpers
 # ----------------------------------------------------------------------------
-def save_prop_shape(asset, shape, w, h, r, mesh=None):
-    """Write/update the shape parameters of one asset in props_shapes.json."""
+def save_prop_shape(asset, shape, w, h, r, mesh=None, mesh_mpp=None, color=None):
+    """Write/update the shape parameters of one asset in props_shapes.json.
+
+    mesh_mpp: meters/pixel of the mesh PNG (its framing); color: colored top-down PNG.
+    """
     shapes_dir = os.path.dirname(os.path.abspath(SHAPES_JSON))
     if not os.path.isdir(shapes_dir):
         os.makedirs(shapes_dir)
@@ -55,6 +60,10 @@ def save_prop_shape(asset, shape, w, h, r, mesh=None):
              "r": round(float(r), 3)}
     if mesh:
         entry["mesh"] = mesh
+    if mesh_mpp:
+        entry["mesh_mpp"] = round(float(mesh_mpp), 6)
+    if color:
+        entry["color"] = color
     data[asset] = entry
     with open(SHAPES_JSON, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, ensure_ascii=False)
@@ -104,30 +113,19 @@ def scene_rows(map_data):
         r.update(kw)
         rows.append(r)
 
-    # Floor + light
+    # Floor (name = room style) + light
+    styles = arch.cell_styles(map_data)
     for (i, j), s in sorted(cells.items()):
         if s < 1:
             continue
         cx, cy = (i + 0.5) * CELL, (j + 0.5) * CELL
-        row(kind="floor", x=cx, y=cy, shape="box", w=CELL, h=CELL)
+        row(kind="floor", name=styles.get((i, j), ""), x=cx, y=cy, shape="box", w=CELL, h=CELL)
         if s == 2:
             row(kind="light", x=cx, y=cy)
 
-    # Vertical walls (vedge)
-    for (i, j), s in sorted(vedges.items()):
-        if s == 0:
-            continue
-        x = i * CELL
-        row(kind=("door" if s == 2 else "wall"),
-            x=x, y=j * CELL, x2=x, y2=(j + 1) * CELL)
-
-    # Horizontal walls (hedge)
-    for (i, j), s in sorted(hedges.items()):
-        if s == 0:
-            continue
-        y = j * CELL
-        row(kind=("door" if s == 2 else "wall"),
-            x=i * CELL, y=y, x2=(i + 1) * CELL, y2=y)
+    # Edges: wall / door (open) / door_closed / window / glass / opening
+    for kind, x0, y0, x1, y1 in arch.bev_edges(map_data):
+        row(kind=kind, x=x0, y=y0, x2=x1, y2=y1)
 
     # Furniture
     for f in furniture:
@@ -154,6 +152,21 @@ def write_csv(map_data, path):
 # ----------------------------------------------------------------------------
 # Shared geometry
 # ----------------------------------------------------------------------------
+EDGE_KINDS = ("wall", "door", "door_closed", "window", "glass", "opening")
+GAP_KINDS = ("door", "opening")          # passable: drawn with the 0.94 m opening free
+SVG_EDGE_COLOR = {"wall": "#000000", "door": "#000000", "opening": "#000000",
+                  "door_closed": "#7a4a1d", "window": "#1d4e89", "glass": "#3aa0c8"}
+
+
+def _edge_segments(r):
+    """Solid segments of an edge row (gap kinds leave the door opening free)."""
+    x0, y0 = float(r["x"]), float(r["y"])
+    x1, y1 = float(r["x2"]), float(r["y2"])
+    if r["kind"] in GAP_KINDS:
+        return _door_segments(x0, y0, x1, y1)
+    return [((x0, y0), (x1, y1))]
+
+
 def _door_segments(x0, y0, x1, y1):
     """Split a wall-door segment into 2 solid parts (with a gap in the middle)."""
     f0, f1 = DOOR_GAP
@@ -190,15 +203,12 @@ def write_svg(map_data, path, scale=BEV_SCALE, margin_m=WALL_M):
         out.append('<rect x="%g" y="%g" width="%g" height="%g" fill="#fefefe"/>'
                    % (X(cx - CELL / 2), Y(cy - CELL / 2), CELL * scale, CELL * scale))
     for r in rows:
-        if r["kind"] not in ("wall", "door"):
+        if r["kind"] not in EDGE_KINDS:
             continue
-        x0, y0 = float(r["x"]), float(r["y"])
-        x1, y1 = float(r["x2"]), float(r["y2"])
-        segs = _door_segments(x0, y0, x1, y1) if r["kind"] == "door" else [((x0, y0), (x1, y1))]
-        for (ax, ay), (bx, by) in segs:
-            out.append('<line x1="%g" y1="%g" x2="%g" y2="%g" stroke="#000000" '
+        for (ax, ay), (bx, by) in _edge_segments(r):
+            out.append('<line x1="%g" y1="%g" x2="%g" y2="%g" stroke="%s" '
                        'stroke-width="%g" stroke-linecap="butt"/>'
-                       % (X(ax), Y(ay), X(bx), Y(by), wall_px))
+                       % (X(ax), Y(ay), X(bx), Y(by), SVG_EDGE_COLOR[r["kind"]], wall_px))
     for r in rows:
         if r["kind"] != "prop":
             continue
@@ -250,12 +260,9 @@ def write_raster(map_data, path_png, scale=BEV_SCALE, margin_m=WALL_M):
         d.rectangle([X(cx - CELL / 2), Y(cy - CELL / 2),
                      X(cx + CELL / 2), Y(cy + CELL / 2)], fill=FREE)
     for r in rows:
-        if r["kind"] not in ("wall", "door"):
+        if r["kind"] not in EDGE_KINDS:
             continue
-        x0, y0 = float(r["x"]), float(r["y"])
-        x1, y1 = float(r["x2"]), float(r["y2"])
-        segs = _door_segments(x0, y0, x1, y1) if r["kind"] == "door" else [((x0, y0), (x1, y1))]
-        for (ax, ay), (bx, by) in segs:
+        for (ax, ay), (bx, by) in _edge_segments(r):
             d.line([X(ax), Y(ay), X(bx), Y(by)], fill=OCC, width=wall_px)
     for r in rows:
         if r["kind"] != "prop":
@@ -288,8 +295,10 @@ def _mesh_stamp(name, img, px, py, yaw, scale):
     if not os.path.isfile(p):
         return False
     try:
-        frame_px = max(1, int(round(CELL * scale)))
-        stamp = Image.open(p).convert("L").resize((frame_px, frame_px), Image.NEAREST)
+        src = Image.open(p).convert("L")
+        mpp = st.mesh_mpp(load_prop_shapes().get(name), src.width)
+        stamp = src.resize((max(1, int(round(src.width * mpp * scale))),
+                            max(1, int(round(src.height * mpp * scale)))), Image.NEAREST)
         stamp = stamp.rotate(-yaw, expand=True, fillcolor=255)
         mask = stamp.point(lambda v: 255 if v < 128 else 0)
         occ = Image.new("L", stamp.size, OCC)
@@ -344,7 +353,7 @@ def export_scene(map_data, stem="scene", scale=BEV_SCALE):
         "yaml": os.path.join(scene_dir, stem + ".yaml"),
         "size": (W, H), "rows": n_rows,
         "floor": sum(1 for r in rows if r["kind"] == "floor"),
-        "wall": sum(1 for r in rows if r["kind"] in ("wall", "door")),
+        "wall": sum(1 for r in rows if r["kind"] in EDGE_KINDS),
         "prop": sum(1 for r in rows if r["kind"] == "prop"),
     }
     return stats

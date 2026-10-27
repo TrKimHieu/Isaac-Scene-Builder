@@ -21,9 +21,14 @@ SCENES_DIR = os.path.join(OUTPUT_DIR, "scenes")
 BEV_DIR = os.path.join(OUTPUT_DIR, "bev")
 MESH_DIR = os.path.join(OUTPUT_DIR, "mesh_shapes")
 RENDER_DIR = os.path.join(MESH_DIR, "renders")
+COLOR_DIR = os.path.join(MESH_DIR, "color")      # colored top-down cut-outs (RGBA)
 MAPS_DIR = os.path.join(PROJECT_ROOT, "data", "maps")
 SHAPES_JSON = os.path.join(PROJECT_ROOT, "data", "props_shapes.json")
 CATALOG_DIR = os.path.join(PROJECT_ROOT, "data", "catalog")
+# Curated multi-environment library (tools/asset_library.py)
+LIBRARY_DIR = os.path.join(ASSETS_DIR, "library")
+ASSET_MANIFEST = os.path.join(PROJECT_ROOT, "data", "asset_manifest.json")
+ASSET_OVERRIDES = os.path.join(PROJECT_ROOT, "data", "asset_overrides.json")
 
 
 def project_path(*parts):
@@ -59,6 +64,50 @@ STRUCTURE_CHOICES = {
 }
 
 # ===========================================================================
+# Architecture (src/architecture.py): edge types, wall kit, room styles
+# ===========================================================================
+# Edge values in map "vedges"/"hedges" (0/1/2 keep their old meaning).
+EDGE_NONE, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS, EDGE_OPENING = range(6)
+EDGE_NAMES = {EDGE_WALL: "Wall", EDGE_DOOR: "Door", EDGE_WINDOW: "Window",
+              EDGE_GLASS: "Glass", EDGE_OPENING: "Opening"}
+EDGE_CYCLE = [EDGE_NONE, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS, EDGE_OPENING]
+
+# Office kit modules (measured in Isaac Sim; composed like NVIDIA's office.usd):
+# - walls are TWO 3 m panels back to back (x 0.100..0.112 each side) -> 22.4 cm wall,
+#   one finished face per room; SM_Wall_end caps free ends / corner posts.
+# - doors: SM_Wall_3m_door pair + SM_DoorB frame at mid-edge + SM_DoorB_Door leaf hinged at
+#   frame-local (0.128, 0.47), closed = 0 deg, open = DOOR_OPEN_DEG; 0.94 m clear opening.
+KIT = {
+    "wall": "SM_Wall_3m", "wall_door": "SM_Wall_3m_door", "wall_end": "SM_Wall_end",
+    "window": "SM_Window_3m_A", "glass_2m": "SM_Glass_2m", "glass_1m": "SM_Glass_1m",
+    "door_frame": "SM_DoorB", "door_leaf": "SM_DoorB_Door", "door_handle": "SM_DoorB_Handle",
+}
+WALL_HALF = 0.112                        # half wall thickness (outer face of a panel)
+DOOR_HINGE = (0.128, 0.47)               # leaf hinge, door-frame local (m)
+DOOR_HANDLE = (-0.026, -0.896, 1.017)    # handle, leaf local (m)
+DOOR_OPEN_DEG = 100.0
+DOOR_DEFAULT = "open"                    # "open" | "closed" (per-door override in the map)
+
+# Room styles: MDL material overrides on the Office geometry (same module sizes, so corners
+# and doors always fit). Paths are relative to assets/library/nvidia/ and are downloaded by
+# tools/asset_library.py. None = keep the kit's own material.
+_HOSP = "Isaac/5.1/Isaac/Environments/Hospital/Materials/"
+_WH = "Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/"
+STYLES = {
+    "office": {"label": "Office", "wall": None, "floor": None, "ceiling": None},
+    "hospital": {"label": "Hospital", "wall": _HOSP + "M_Wall_PlasterBlue.mdl",
+                 "floor": _HOSP + "MI_Hospital_Floor.mdl",
+                 "ceiling": _HOSP + "M_CeilingTile2x2.mdl"},
+    "warehouse": {"label": "Warehouse", "wall": _WH + "MI_WallA_01.mdl",
+                  "floor": _WH + "MI_Floor_01.mdl", "ceiling": _WH + "MI_CeilingA_06b.mdl"},
+    "residential": {"label": "Home", "wall": _HOSP + "M_Wall_Cream.mdl",
+                    "floor": _HOSP + "M_Wood_Floor.mdl", "ceiling": _HOSP + "M_Wall_Plaster.mdl"},
+}
+DEFAULT_STYLE = "office"
+STYLE_COLORS = {"office": (37, 51, 82), "hospital": (30, 78, 96), "warehouse": (78, 64, 44),
+                "residential": (82, 52, 66)}
+
+# ===========================================================================
 # Furniture catalog (single source of truth)
 # ===========================================================================
 FURNITURE = [
@@ -84,6 +133,15 @@ FURNITURE_CATEGORIES = {
     "Machines": ["SM_Printer", "SM_DrinksMachine"],
     "Decor": ["SM_Plant01", "SM_Plant02", "SM_Plant03",
               "SM_TrashCan", "SM_TrashCan_01"],
+}
+
+# Asset-library category (tools/asset_library.py) -> editor palette tab
+LIBRARY_CATEGORY_TABS = {
+    "table": "Desks", "seating": "Chairs", "sofa": "Chairs", "storage": "Cabinets",
+    "shelving": "Shelving", "appliance": "Machines", "equipment": "Machines",
+    "plant": "Decor", "decor": "Decor", "lighting": "Decor", "bed": "Beds",
+    "medical": "Medical", "fixture": "Fixtures", "container": "Containers",
+    "pallet": "Containers", "cart": "Carts", "safety": "Safety", "misc": "Other",
 }
 
 # Extra furniture for shape extraction (from Office pack)
@@ -126,8 +184,14 @@ OCC = 0
 RESOLUTION = 1024
 APERTURE_SCALE = 10.0
 CHUNK_SIZE = 40
-GROUND_SIZE = 12.0
+GROUND_SIZE = 40.0      # white ground plane (m); must exceed the largest capture frame
 CAM_HEIGHT = 6.0
+# Capture frame (m, square, centered on the prop origin): the smallest step that
+# contains the prop footprint is used, so large props (conference tables, racks,
+# reception counters) are not clipped. Each render gets a <asset>.json sidecar
+# {"frame_m": ...}; meters/pixel = frame_m / image width.
+FRAME_STEPS = (3.0, 4.5, 6.0, 9.0, 12.0, 18.0)
+FRAME_MARGIN = 0.15     # m kept free around the footprint
 SETTLE_FRAMES = 16
 SHOW_FRAMES = 6
 VERTICAL_FLIP = True
@@ -168,6 +232,8 @@ FLOOR_COL = (37, 51, 82)        # indigo-tinted slate fill
 FLOOR_HOVER = (60, 80, 124)
 WALL_COL = (203, 213, 225)      # slate-300 (crisp walls)
 DOOR_COL = (52, 211, 153)       # emerald-400
+WINDOW_COL = (125, 211, 252)    # sky-300
+GLASS_COL = (103, 232, 249)     # cyan-300
 LIGHT_COL = (251, 191, 36)      # amber-400
 HOVER_EDGE = (129, 140, 248)    # indigo-400
 

@@ -84,8 +84,16 @@ python src/scene_editor.py
 ```text
 1  Floor      → click / drag to paint floor
 W             → auto-generate boundary walls
+2  Wall       → click an edge to cycle wall / door / window / glass / opening,
+                or pick an EDGE TYPE in the panel and drag along a row;  O = open/close door
+4  Style      → paint a room style (Office / Hospital / Warehouse / Home) on the floor
 3  Furniture  → pick in the palette, click to place  (hold left + drag to move)
 ```
+
+Walls are built like NVIDIA's office scene: two back-to-back panels (each face takes the
+style of the room it looks into), capped at free ends and corners; doors get a real frame +
+leaf (open by default), windows and glass walls are full 3 m modules. Example:
+`data/maps/demo_architecture.json`.
 
 **3 · Export — one key**
 ```text
@@ -99,7 +107,8 @@ B  →  output/bev/sceneN/           # BEV map for the robot (5 formats)
 
 | Key | Action | Key | Action |
 |:---:|---|:---:|---|
-| `1` `2` `3` | Floor / Wall / Furniture | `Ctrl+Z` `Ctrl+Y` | Undo / Redo |
+| `1` `2` `3` `4` | Floor / Wall / Furniture / Style | `Ctrl+Z` `Ctrl+Y` | Undo / Redo |
+| `O` | Open / close the door under the cursor | `V` | Mesh view: mask / color |
 | `Tab` | Switch tool | `Ctrl`+wheel | Zoom to cursor |
 | `R` | Rotate furniture 5° | Middle-drag | Pan the view |
 | `W` | Auto boundary walls | `S` / `B` | Export USD / BEV |
@@ -144,6 +153,9 @@ isaacsim\python.bat src/isaac_bev_capture.py <Name>   # 1. capture a BEV image
 python src/build_furniture_shapes.py                  # 2. measure W/H/R + cut mesh
 python src/scene_editor.py                            # 3. it's now in the palette
 ```
+
+**Asset library (~260 curated models, office · residential · hospital · warehouse):**
+`python tools/asset_library.py fetch` downloads it into `assets/library/` (NVIDIA ArchVis / DigitalTwin / Isaac + Poly Haven CC0).
 
 Compatible asset sources (NVIDIA Omniverse / SimReady) and details: see [`docs/ASSETS.md`](docs/ASSETS.md).
 

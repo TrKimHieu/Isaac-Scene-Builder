@@ -3,16 +3,18 @@ shape_tools.py - Pure logic (no pygame) to measure bounding box/sphere and
 cut the shape from a white-background BEV render. Uses Pillow.
 
 Quy uoc:
-- The render (from isaac_bev_capture.py) is framed exactly to one 3x3 m cell,
-  i.e. image width = CELL meters -> meters/pixel = CELL / img_width.
+- The render (from isaac_bev_capture.py) is a square frame centered on the prop origin,
+  frame_m meters wide (sidecar <asset>.json; old renders without it = one 3x3 m CELL)
+  -> meters/pixel = frame_m / img_width.
 - "White bg, anything non-white is object": a pixel is OBJECT if it
   is dark enough / saturated enough vs white (see is_object_mask).
 - The output shape mask is grayscale "L": OBJECT = 0 (black, occupied),
   NEN = 255 (trang) -> khop voi bev_export._mesh_stamp / quy uoc ROS.
 """
 import os
+import json
 
-from config import CELL, WHITE_TOL, SAT_TOL
+from config import CELL, WHITE_TOL, SAT_TOL, FRAME_STEPS, FRAME_MARGIN
 
 try:
     from PIL import Image
@@ -24,6 +26,42 @@ except ImportError:  # pragma: no cover
 
 def meters_per_pixel(img_w, cell=CELL):
     return float(cell) / float(img_w)
+
+
+def pick_frame(bbox_min, bbox_max, steps=FRAME_STEPS, margin=FRAME_MARGIN):
+    """Smallest square frame (m) centered on the origin that contains the XY footprint."""
+    half = max(abs(bbox_min[0]), abs(bbox_max[0]), abs(bbox_min[1]), abs(bbox_max[1]))
+    need = 2.0 * (half + margin)
+    for s in steps:
+        if s >= need:
+            return float(s)
+    return float(steps[-1])
+
+
+def render_meta_path(render_png):
+    return os.path.splitext(render_png)[0] + ".json"
+
+
+def write_render_meta(render_png, frame_m, **extra):
+    meta = dict(frame_m=float(frame_m), **extra)
+    with open(render_meta_path(render_png), "w", encoding="utf-8") as fh:
+        json.dump(meta, fh, indent=1)
+
+
+def render_frame_m(render_png, default=CELL):
+    """Frame width (m) of a render, from its sidecar; old renders = one CELL."""
+    try:
+        with open(render_meta_path(render_png), encoding="utf-8") as fh:
+            return float(json.load(fh).get("frame_m", default))
+    except Exception:
+        return float(default)
+
+
+def mesh_mpp(entry, img_w):
+    """Meters/pixel of a mesh_shapes PNG: props_shapes entry 'mesh_mpp' (new), else the
+    legacy convention (PNG spans one CELL)."""
+    v = (entry or {}).get("mesh_mpp")
+    return float(v) if v else CELL / float(img_w)
 
 
 def is_object_mask(pil_img):
@@ -99,6 +137,20 @@ def circle_mask_shape(pil_img, cx, cy, radius_px):
     y1 = min(h, int(cy + radius_px) + 1)
     out = np.where(obj[y0:y1, x0:x1], 0, 255).astype("uint8")
     return Image.fromarray(out, mode="L")
+
+
+def color_cutout(pil_img, box=None):
+    """Colored top-down cut-out: the render's own colors on object pixels, transparent
+    elsewhere -> PIL 'RGBA' (same framing as cut_shape)."""
+    if np is None:
+        raise RuntimeError("Pillow/numpy not installed.")
+    rgb = np.asarray(pil_img.convert("RGB"), dtype=np.uint8)
+    mask = is_object_mask(pil_img)
+    if box is not None:
+        x0, y0, x1, y1 = box
+        rgb, mask = rgb[y0:y1, x0:x1], mask[y0:y1, x0:x1]
+    alpha = np.where(mask, 255, 0).astype("uint8")
+    return Image.fromarray(np.dstack([rgb, alpha]), mode="RGBA")
 
 
 def save_shape_png(pil_L, asset, mesh_dir):

@@ -16,15 +16,20 @@ map_data schema (see plan):
 import os
 import re
 import glob
+import math
 
-from pxr import Usd, UsdGeom, UsdLux, Gf, Sdf
+try:
+    from pxr import Usd, UsdGeom, UsdLux, UsdShade, Gf, Sdf
+except ImportError:   # editor / BEV / shape tools work without OpenUSD; writing .usd needs it
+    Usd = UsdGeom = UsdLux = UsdShade = Gf = Sdf = None
 
 from config import (PROJECT_ROOT, PROP_DIRS, PROPS_REL, CELL, WALL_H,
                     FLOOR, CEILING, WALL, WALL_DOOR, LIGHT_MESH, REQUIRED,
-                    STRUCTURE_CHOICES, FURNITURE, SCENES_DIR,
+                    STRUCTURE_CHOICES, FURNITURE, FURNITURE_CATEGORIES,
+                    LIBRARY_CATEGORY_TABS, SCENES_DIR, STYLES, LIBRARY_DIR,
                     LIGHT_RADIUS, LIGHT_INTENSITY, LIGHT_COLOR,
                     LIGHT_EXPOSURE, LIGHT_CONE_ANGLE, LIGHT_CONE_SOFTNESS)
-from utils import safe_name, load_prop_shapes, ikey
+from utils import safe_name, load_prop_shapes, load_library, ikey
 
 
 # Re-export for backward compatibility
@@ -45,39 +50,68 @@ def _asset_dir(name):
 
 
 def asset_exists(name):
-    return _asset_dir(name) is not None
+    return asset_abs(name) is not None
 
 
 def asset_abs(name):
-    """Absolute path to the prop (or None)."""
-    d = _asset_dir(name)
-    return os.path.join(d, name + ".usd") if d else None
-
-
-def asset_path(name):
-    """Relative path from the Scene file to the prop (portable), using the right dir."""
+    """Absolute path to the prop (or None): flat PROP_DIRS first, then the asset library."""
     d = _asset_dir(name)
     if d:
-        rel = os.path.relpath(d, PROJECT_ROOT).replace("\\", "/")
-        return "./%s/%s.usd" % (rel, name)
-    return "./%s/%s.usd" % (PROPS_REL, name)
+        return os.path.join(d, name + ".usd")
+    lib = load_library().get(name)
+    return lib["abs"] if lib else None
+
+
+def asset_path(name, base_dir=None):
+    """Path to the prop relative to base_dir = the directory of the Scene file that
+    references it (USD anchors relative asset paths to the referencing layer).
+
+    base_dir None -> relative to PROJECT_ROOT (only correct for scenes saved there).
+    """
+    base = base_dir or PROJECT_ROOT
+    p = asset_abs(name) or os.path.join(PROJECT_ROOT, PROPS_REL, name + ".usd")
+    try:
+        rel = os.path.relpath(p, base)
+    except ValueError:                       # other drive on Windows: keep absolute
+        return p.replace("\\", "/")
+    rel = rel.replace("\\", "/")
+    return rel if rel.startswith("../") else "./" + rel
+
+
+def _stage_dir(stage):
+    """Directory of the stage's root layer file, or None for in-memory stages."""
+    real = stage.GetRootLayer().realPath
+    return os.path.dirname(os.path.abspath(real)) if real else None
+
+
+def _library_radius(entry):
+    """Footprint radius guess from manifest dims (Poly Haven) -> 0.5 default."""
+    dims = entry.get("dims_m")
+    if dims:
+        return round(0.5 * math.hypot(dims[0], dims[1]), 2)
+    return 0.5
 
 
 def _extra_furniture():
     """Furniture outside the curated list:
-      (a) any asset already measured in props_shapes.json (any dir), and
-      (b) moi *.usd trong assets/extra/.
-    Radius: props_shapes.json[name].r -> default 0.5.
+      (a) any asset already measured in props_shapes.json (any dir),
+      (b) moi *.usd trong assets/extra/, and
+      (c) the curated asset library (data/asset_manifest.json, assets/library/).
+    Radius: props_shapes.json[name].r -> library dims -> default 0.5.
     """
     known = {n for n, _ in FURNITURE}
     shapes = load_prop_shapes()
+    library = load_library()
     out, seen = [], set()
 
     def add(n):
         if n in known or n in seen or not asset_exists(n):
             return
         seen.add(n)
-        out.append((n, float(shapes.get(n, {}).get("r", 0.5))))
+        r = shapes.get(n, {}).get("r")
+        if r is None:
+            r = _library_radius(library[n]) if n in library else 0.5
+        out.append((n, float(r)))
 
     for n in sorted(shapes.keys()):             # (a) registered via props_shapes.json
         add(n)
@@ -85,6 +119,8 @@ def _extra_furniture():
         if os.path.isdir(d):
             for f in sorted(glob.glob(os.path.join(d, "*.usd"))):
                 add(os.path.splitext(os.path.basename(f))[0])
+    for n in sorted(library):                    # (c) asset library
+        add(n)
     return out
 
 
@@ -92,6 +128,14 @@ def available_furniture():
     """Palette = curated (existing) + registered props (props_shapes.json) + assets/extra/."""
     base = [(n, r) for (n, r) in FURNITURE if asset_exists(n)]
     return base + _extra_furniture()
+
+
+def palette_categories():
+    """Editor palette tabs: curated FURNITURE_CATEGORIES + library assets by category."""
+    cats = {k: list(v) for k, v in FURNITURE_CATEGORIES.items()}
+    for n, e in sorted(load_library().items()):
+        cats.setdefault(LIBRARY_CATEGORY_TABS.get(e.get("category"), "Other"), []).append(n)
+    return cats
 
 
 def check_required():
@@ -157,6 +201,23 @@ def boundary_edges(cells):
 # ----------------------------------------------------------------------------
 _BBOX_CACHE = {}
 _MPU_CACHE = {}
+_UP_CACHE = {}
+
+
+def asset_up_axis(name):
+    """'Y' or 'Z' (cached). Y-up props (some ArchVis / Poly Haven assets) get rotated
+    +90 deg about X when placed so they stand upright in the Z-up scene."""
+    if name in _UP_CACHE:
+        return _UP_CACHE[name]
+    v = "Z"
+    p = asset_abs(name)
+    if p:
+        try:
+            v = str(UsdGeom.GetStageUpAxis(Usd.Stage.Open(p))) or "Z"
+        except Exception:
+            v = "Z"
+    _UP_CACHE[name] = v
+    return v
 
 
 def asset_mpu(name):
@@ -219,8 +280,11 @@ def _tile_align(name):
 # ----------------------------------------------------------------------------
 # Dat prim
 # ----------------------------------------------------------------------------
-def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0):
+def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0, base_dir=None):
     """Xform holding the transform, with /Geo referencing the prop.
+
+    base_dir: directory the Scene file will be saved in (asset paths are made relative to
+    it); defaults to the stage's own file location.
 
     Auto unit-normalize: multiply scale by the prop metersPerUnit (cm props -> 0.01)
     so every prop shows at true meter size in a meter stage.
@@ -229,19 +293,52 @@ def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0):
     xf.AddTranslateOp().Set(Gf.Vec3d(*translate))
     if rot_z:
         xf.AddRotateZOp().Set(float(rot_z))
+    if asset_up_axis(asset_name) == "Y":
+        xf.AddRotateXOp(opSuffix="upAxis").Set(90.0)
     eff = float(scale) * asset_mpu(asset_name)
     if abs(eff - 1.0) > 1e-9:
         xf.AddScaleOp().Set(Gf.Vec3f(eff, eff, eff))
     geo = stage.DefinePrim(path + "/Geo")
-    geo.GetReferences().AddReference(asset_path(asset_name))
+    geo.GetReferences().AddReference(asset_path(asset_name, base_dir or _stage_dir(stage)))
     return xf
 
 
-def add_light(stage, base_path, cx, cy, light_mesh=None):
+def _style_material(stage, looks, style, slot, base_dir):
+    """UsdShade material for a room style + slot (wall/floor/ceiling), created once per
+    scene under /World/Looks; None when the style keeps the kit material or the MDL
+    is not downloaded (tools/asset_library.py fetch)."""
+    if not style or not slot:
+        return None
+    key = (style, slot)
+    if key in looks:
+        return looks[key]
+    rel = (STYLES.get(style) or {}).get(slot)
+    mdl = os.path.join(LIBRARY_DIR, "nvidia", *rel.split("/")) if rel else None
+    if not mdl or not os.path.isfile(mdl):
+        looks[key] = None
+        return None
+    path = "/World/Looks/%s_%s" % (safe_name(style), slot)
+    mat = UsdShade.Material.Define(stage, path)
+    sh = UsdShade.Shader.Define(stage, path + "/Shader")
+    sh.CreateImplementationSourceAttr(UsdShade.Tokens.sourceAsset)
+    try:
+        ref = os.path.relpath(mdl, base_dir).replace("\\", "/")
+    except ValueError:
+        ref = mdl.replace("\\", "/")
+    sh.SetSourceAsset(Sdf.AssetPath(ref if ref.startswith("../") else "./" + ref), "mdl")
+    sh.SetSourceAssetSubIdentifier(os.path.splitext(os.path.basename(mdl))[0], "mdl")
+    out = sh.CreateOutput("out", Sdf.ValueTypeNames.Token)
+    mat.CreateSurfaceOutput("mdl").ConnectToSource(out)
+    looks[key] = mat
+    return mat
+
+
+def add_light(stage, base_path, cx, cy, light_mesh=None, base_dir=None):
     """Light fixture (mesh) + an already-on SphereLight source at the cell center."""
     if light_mesh is None:
         light_mesh = LIGHT_MESH
-    place(stage, base_path + "_Fixture", light_mesh, (cx, cy, WALL_H - 0.02))
+    place(stage, base_path + "_Fixture", light_mesh, (cx, cy, WALL_H - 0.02),
+          base_dir=base_dir)
     light = UsdLux.SphereLight.Define(stage, base_path)
     light.CreateRadiusAttr(LIGHT_RADIUS)
     light.CreateIntensityAttr(LIGHT_INTENSITY)
@@ -258,69 +355,52 @@ def add_light(stage, base_path, cx, cy, light_mesh=None):
 # ----------------------------------------------------------------------------
 def build_scene(map_data, out_path):
     """Dung Scene .usd (USDA text) tu map_data. Tra ve dict thong ke."""
+    if Usd is None:
+        raise RuntimeError("OpenUSD (pxr) is not available in this Python - install usd-core "
+                           "or run with Isaac Sim's python to build .usd scenes")
+    import architecture as arch
     struct = dict(map_data.get("structure") or {})
-    floor_p = struct.get("floor", FLOOR)
-    ceiling_p = struct.get("ceiling", CEILING)
-    wall_p = struct.get("wall", WALL)
-    door_p = struct.get("wall_door", WALL_DOOR)
     light_p = struct.get("light", LIGHT_MESH)
-
-    missing = [n for n in (floor_p, ceiling_p, wall_p, door_p, light_p)
-               if not asset_exists(n)]
+    missing = [n for n in arch.required_assets(map_data) if not asset_exists(n)]
     if missing:
         raise RuntimeError("Thieu module cau truc: %s (trong %s)" % (missing, PROP_DIRS))
 
     nx, ny, cells, vedges, hedges, furniture = parse_map(map_data)
 
+    out_dir = os.path.dirname(os.path.abspath(out_path))   # asset paths relative to here
     stage = Usd.Stage.CreateInMemory()
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(stage, 1.0)
     world = UsdGeom.Xform.Define(stage, "/World")
     stage.SetDefaultPrim(world.GetPrim())
-    UsdGeom.Scope.Define(stage, "/World/Structure")
-    UsdGeom.Scope.Define(stage, "/World/Lights")
-    UsdGeom.Scope.Define(stage, "/World/Furniture")
+    for scope in ("Structure", "Doors", "Lights", "Furniture", "Looks"):
+        UsdGeom.Scope.Define(stage, "/World/" + scope)
 
-    stats = {"floor": 0, "ceiling": 0, "light": 0, "wall": 0, "door": 0,
-             "furniture": 0, "skipped": []}
+    stats = {"floor": 0, "ceiling": 0, "light": 0, "wall": 0, "door": 0, "window": 0,
+             "glass": 0, "cap": 0, "furniture": 0, "skipped": [], "styles": {}}
+    looks = {}
 
-    fxo, fyo = _tile_align(floor_p)
-    cxo, cyo = _tile_align(ceiling_p)
-    wcx, wym = _wall_align(wall_p)
-    dcx, dym = _wall_align(door_p)
-
-    # Floor + ceiling (+ light)
-    for (i, j), s in sorted(cells.items()):
-        if s < 1:
-            continue
-        place(stage, "/World/Structure/Floor_%d_%d" % (i, j), floor_p,
-              (i * CELL - fxo, j * CELL - fyo, 0.0))
-        place(stage, "/World/Structure/Ceiling_%d_%d" % (i, j), ceiling_p,
-              (i * CELL - cxo, j * CELL - cyo, WALL_H))
-        stats["floor"] += 1
-        stats["ceiling"] += 1
-        if s == 2:
-            cx, cy = (i + 0.5) * CELL, (j + 0.5) * CELL
-            add_light(stage, "/World/Lights/Lamp_%d_%d" % (i, j), cx, cy, light_p)
-            stats["light"] += 1
-
-    # Vertical walls (vedge)
-    for (i, j), s in sorted(vedges.items()):
-        if s == 0:
-            continue
-        a, cx, ym = (door_p, dcx, dym) if s == 2 else (wall_p, wcx, wym)
-        place(stage, "/World/Structure/WallV_%d_%d" % (i, j), a,
-              (i * CELL - cx, j * CELL - ym, 0.0), rot_z=0)
-        stats["door" if s == 2 else "wall"] += 1
-
-    # Horizontal walls (hedge)
-    for (i, j), s in sorted(hedges.items()):
-        if s == 0:
-            continue
-        a, cx, ym = (door_p, dcx, dym) if s == 2 else (wall_p, wcx, wym)
-        place(stage, "/World/Structure/WallH_%d_%d" % (i, j), a,
-              (i * CELL - ym, j * CELL + cx, 0.0), rot_z=-90)
-        stats["door" if s == 2 else "wall"] += 1
+    # Shell: floors, ceilings, wall panels, caps, doors, windows, glass
+    for it in arch.plan_structure(map_data):
+        parent = "/World/Doors/" if it["kind"] == "door" else "/World/Structure/"
+        xf = place(stage, parent + it["name"], it["asset"], it["pos"], rot_z=it["yaw"],
+                   base_dir=out_dir)
+        mat = _style_material(stage, looks, it["style"], it["slot"], out_dir)
+        if mat is not None:
+            geo = stage.GetPrimAtPath(xf.GetPath().AppendChild("Geo"))
+            UsdShade.MaterialBindingAPI.Apply(geo).Bind(
+                mat, UsdShade.Tokens.strongerThanDescendants)
+        k = it["kind"]
+        if k in stats:
+            stats[k] += 1
+        if it["style"] and it["slot"] == "floor":
+            stats["styles"][it["style"]] = stats["styles"].get(it["style"], 0) + 1
+    stats["door"] //= 3                                # frame + leaf + handle per door
+    stats["wall"] //= 2                                # two panels per wall edge
+    for i, j, cx, cy in arch.lights(map_data):
+        add_light(stage, "/World/Lights/Lamp_%d_%d" % (i, j), cx, cy, light_p,
+                  base_dir=out_dir)
+        stats["light"] += 1
 
     # Furniture
     for idx, f in enumerate(furniture):
@@ -330,10 +410,9 @@ def build_scene(map_data, out_path):
             continue
         path = "/World/Furniture/%s_%d" % (safe_name(name), idx)
         place(stage, path, name, (float(f["x"]), float(f["y"]), 0.0),
-              rot_z=float(f.get("yaw", 0.0)))
+              rot_z=float(f.get("yaw", 0.0)), base_dir=out_dir)
         stats["furniture"] += 1
 
-    out_dir = os.path.dirname(os.path.abspath(out_path))
     if out_dir and not os.path.isdir(out_dir):
         os.makedirs(out_dir)
     text = stage.GetRootLayer().ExportToString()

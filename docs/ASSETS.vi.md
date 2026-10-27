@@ -9,6 +9,37 @@ nội thất và đổi prop tường/sàn như dưới đây.
 tải `Isaac/Environments/Office/{Props,Materials}` (~700 MB) từ server asset công khai của NVIDIA về
 `assets/office/`, bỏ qua file đã có, rồi kiểm tra đủ mọi prop khai báo trong `src/config.py`.
 
+## 0. Thư viện asset tuyển chọn (văn phòng · nhà ở · bệnh viện · kho)
+
+`tools/asset_library.py` tổng hợp một thư viện đa môi trường, đã lọc trùng, từ server asset công khai
+của NVIDIA (ArchVis Commercial/Residential/Industrial, DigitalTwin Warehouse, prop của Isaac Hospital
+& Simple_Warehouse) và **Poly Haven (CC0)**:
+
+```bash
+python tools/asset_library.py select --budget-gb 20   # quét -> lọc trùng -> gom dependency -> data/asset_manifest.json
+python tools/asset_library.py fetch                   # tải toàn bộ asset + texture/material
+python tools/asset_library.py check                   # kiểm tra đủ root + mọi tham chiếu trên đĩa
+python tools/asset_library.py sheet --env office      # ảnh thumbnail theo nhóm để soát asset giống nhau
+```
+
+- **Lọc trùng:** các biến thể của cùng một model (màu / cỡ / `_A01.._A09` / `_Var01`) gộp thành một họ;
+  mỗi nhóm (môi trường, loại) có giới hạn số lượng. Tinh chỉnh bằng `data/asset_overrides.json`:
+  `{"exclude": [ids], "include": [ids], "family_keep": {"họ": n}, "caps": {"env/cat": n},
+  "category": {"id": "cat"}}`.
+- **Cấu trúc:** file được giữ nguyên đường dẫn như trên server (`assets/library/nvidia/...`,
+  `assets/library/polyhaven/<id>/`) để tham chiếu material/texture tương đối vẫn đúng.
+  `assets/library/` không đưa vào git; `data/asset_manifest.json` thì có.
+- **Editor / builder:** id thư viện (`AV_*`, `DT_*`, `HOS_*`, `WH_*`, `PH_*`) hiện trong palette ở
+  các tab mới (Medical, Containers, Carts, Safety, ...); ô tìm kiếm khớp cả môi trường/loại
+  (`hospital`, `warehouse`, ...). Asset Y-up được tự xoay đứng.
+- **Shape:** chạy `isaac_bev_capture.py --library` (trong Isaac Sim) rồi `build_furniture_shapes.py`.
+  Mỗi prop được chụp từ trên xuống với khung vừa cỡ (3 / 4.5 / 6 / 9 / 12 / 18 m, ghi trong
+  `renders/<asset>.json`), cho ra bbox + hình tròn + mask mesh (`mesh_shapes/<asset>.png`) + ảnh
+  màu nhìn từ trên (`mesh_shapes/color/<asset>.png`). Trong editor, phím **V** đổi cách hiển thị prop
+  mesh giữa mask footprint và ảnh màu.
+- **Giấy phép:** asset NVIDIA dùng nguyên bản theo giấy phép Omniverse (prop trong Isaac/Environments
+  là *Limited Use*); không commit hay phân phối lại. Model Poly Haven là CC0.
+
 ## 1. Thêm nội thất mới (tự đăng ký)
 
 Palette lấy từ `scene_builder.available_furniture()` = danh sách curated (`FURNITURE`)
