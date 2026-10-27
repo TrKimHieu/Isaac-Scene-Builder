@@ -148,7 +148,8 @@ python src/scene_editor.py                            # 3. có ngay trong palett
 Nguồn tải asset tương thích (NVIDIA Omniverse / SimReady) và chi tiết: xem [`docs/ASSETS.md`](docs/ASSETS.md).
 
 > **Lưu ý về Git:** `assets/office/` (~710 MB) và `assets/extra/*.usd` **không** được versioned để repo gọn nhẹ.
-> Sau khi clone, đặt asset vào đúng thư mục. Dữ liệu shape (`data/props_shapes.json`) & bản đồ (`data/maps/`) thì có sẵn.
+> Sau khi clone, chạy `fetch_assets.bat` (hoặc `python tools/fetch_office_assets.py`) để tải Office pack
+> từ server asset Isaac Sim công khai của NVIDIA về `assets/office/`; asset bổ sung thì tự đặt vào `assets/extra/`. Dữ liệu shape (`data/props_shapes.json`) & bản đồ (`data/maps/`) thì có sẵn.
 
 <br>
 

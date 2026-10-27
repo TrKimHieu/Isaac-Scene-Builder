@@ -5,6 +5,10 @@
 The project ships with the **Office** asset pack (`assets/office/Props/*.usd`). You can add
 more furniture and change the wall/floor props as described below.
 
+**Getting the Office pack:** `fetch_assets.bat` / `python tools/fetch_office_assets.py [--version 5.1]`
+downloads `Isaac/Environments/Office/{Props,Materials}` (~700 MB) from NVIDIA's public asset server into
+`assets/office/`, skipping files already present, then checks every prop listed in `src/config.py` exists.
+
 ## 1. Add new furniture (auto-register)
 
 The palette comes from `scene_builder.available_furniture()` = the curated list (`FURNITURE`)

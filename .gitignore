@@ -31,3 +31,6 @@ output/mesh_shapes/
 
 # Backup archives
 *.zip
+
+# Local virtualenv
+.venv/

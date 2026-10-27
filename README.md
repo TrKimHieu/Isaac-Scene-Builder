@@ -148,7 +148,8 @@ python src/scene_editor.py                            # 3. it's now in the palet
 Compatible asset sources (NVIDIA Omniverse / SimReady) and details: see [`docs/ASSETS.md`](docs/ASSETS.md).
 
 > **Note on Git:** `assets/office/` (~710 MB) and `assets/extra/*.usd` are **not** versioned to keep the repo light.
-> After cloning, place the assets in the right folders. Shape data (`data/props_shapes.json`) & maps (`data/maps/`) are included.
+> After cloning, run `fetch_assets.bat` (or `python tools/fetch_office_assets.py`) to download the Office pack
+> from NVIDIA's public Isaac Sim asset server into `assets/office/`; put extra assets into `assets/extra/` yourself. Shape data (`data/props_shapes.json`) & maps (`data/maps/`) are included.
 
 <br>
 

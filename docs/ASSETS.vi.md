@@ -5,6 +5,10 @@
 Dự án hiện dùng bộ asset **Office** (`assets/office/Props/*.usd`). Bạn có thể bổ sung thêm
 nội thất và đổi prop tường/sàn như dưới đây.
 
+**Lấy Office pack:** `fetch_assets.bat` / `python tools/fetch_office_assets.py [--version 5.1]`
+tải `Isaac/Environments/Office/{Props,Materials}` (~700 MB) từ server asset công khai của NVIDIA về
+`assets/office/`, bỏ qua file đã có, rồi kiểm tra đủ mọi prop khai báo trong `src/config.py`.
+
 ## 1. Thêm nội thất mới (tự đăng ký)
 
 Palette lấy từ `scene_builder.available_furniture()` = danh sách curated (`FURNITURE`)
