@@ -104,8 +104,8 @@ STYLES = {
                     "floor": _HOSP + "M_Wood_Floor.mdl", "ceiling": _HOSP + "M_Wall_Plaster.mdl"},
 }
 DEFAULT_STYLE = "office"
-STYLE_COLORS = {"office": (37, 51, 82), "hospital": (30, 78, 96), "warehouse": (78, 64, 44),
-                "residential": (82, 52, 66)}
+STYLE_COLORS = {"office": (235, 237, 241), "hospital": (224, 239, 236),
+                "warehouse": (240, 231, 215), "residential": (243, 229, 226)}
 
 # ===========================================================================
 # Furniture catalog (single source of truth)
@@ -211,50 +211,57 @@ WHITE_TOL = 18
 SAT_TOL = 18
 
 # ===========================================================================
-# UI Theme - "Slate + Indigo" modern dark (Tailwind / Linear inspired)
+# UI Theme - "Ivory & Ink": light, minimal, quietly luxurious
+#   warm ivory canvas, white cards, ink text, one champagne-gold accent.
 # ===========================================================================
-# Neutral ramp (dark -> light): canvas bg, panel, dim text, text, bright text
-C0 = (15, 23, 42)       # slate-900
-C1 = (30, 41, 59)       # slate-800
-C2 = (148, 163, 184)    # slate-400  (dim text)
-C3 = (226, 232, 240)    # slate-200  (text)
-C4 = (248, 250, 252)    # slate-50   (bright text)
-MESH_MARK = (244, 63, 94)   # rose-500
+# Neutral ramp (kept as C0..C4 for older code): ink -> white
+C0 = (28, 31, 36)       # ink (strongest text / active fills)
+C1 = (58, 62, 70)       # graphite
+C2 = (128, 122, 112)    # warm grey (secondary text)
+C3 = (40, 43, 48)       # body text
+C4 = (255, 255, 255)    # white
+MESH_MARK = (178, 58, 58)
 
-BG = C0
-PANEL_BG = (20, 27, 45)         # slate-850 (panel, subtly above canvas)
-GRID_LINE = (36, 47, 68)        # faint grid lines
-SECTION_LINE = (44, 56, 78)     # slate-700 dividers
+BG = (243, 240, 233)            # ivory canvas around the plan
+PLAN_BG = (252, 251, 248)       # the plan sheet (grid area)
+PANEL_BG = (255, 255, 255)      # side panel / cards
+GRID_LINE = (228, 222, 210)     # hairline grid
+SECTION_LINE = (238, 233, 224)  # dividers
+BORDER = (226, 220, 208)        # control outlines
+SHADOW_ALPHA = 22               # soft card shadow (0-255)
 
 # Buttons
-BTN = (42, 54, 78)              # resting
-BTN_HOVER = (60, 74, 104)       # hover
-BTN_ACTIVE = (99, 102, 241)     # indigo-500 (active tool / primary)
+BTN = (255, 255, 255)           # resting (outlined)
+BTN_HOVER = (246, 242, 234)     # hover
+BTN_ACTIVE = C0                 # active tool / selected option: ink fill
+ON_ACTIVE = (250, 247, 240)     # text on ink
 
 # Text
 TEXT = C3
 TEXT_DIM = C2
 
-# Floor / wall / light / door
-FLOOR_COL = (37, 51, 82)        # indigo-tinted slate fill
-FLOOR_HOVER = (60, 80, 124)
-WALL_COL = (203, 213, 225)      # slate-300 (crisp walls)
-DOOR_COL = (52, 211, 153)       # emerald-400
-WINDOW_COL = (125, 211, 252)    # sky-300
-GLASS_COL = (103, 232, 249)     # cyan-300
-ROBOT_COL = (244, 114, 182)     # pink-400 (waypoints / route)
-SPAWN_COL = (74, 222, 128)      # green-400 (robot spawn)
-LIGHT_COL = (251, 191, 36)      # amber-400
-HOVER_EDGE = (129, 140, 248)    # indigo-400
+# Accent - champagne gold (selection, focus, highlights)
+ACCENT = (166, 129, 74)
+ACCENT_DIM = (244, 236, 220)    # gold tint (selected rows, active field)
 
-# Furniture / selection accent
-FURNI_COL = (96, 165, 250)      # blue-400
-FURNI_SEL = (251, 191, 36)      # amber-400 (selected pops)
-ACCENT = (167, 139, 250)        # violet-400 (rings, headers, active field)
-ACCENT_DIM = (76, 66, 140)      # dim violet
+# Floor / wall / light / door
+FLOOR_COL = (235, 237, 241)     # default (office) floor
+FLOOR_HOVER = (196, 184, 160)
+WALL_COL = (44, 47, 54)         # ink walls
+DOOR_COL = (63, 130, 98)        # muted green
+WINDOW_COL = (96, 146, 190)     # steel blue
+GLASS_COL = (112, 176, 198)
+ROBOT_COL = (184, 92, 112)      # muted rose (waypoints / route)
+SPAWN_COL = (63, 130, 98)       # robot spawn
+LIGHT_COL = (196, 160, 98)      # champagne
+HOVER_EDGE = ACCENT
+
+# Furniture / selection
+FURNI_COL = (122, 134, 152)     # slate
+FURNI_SEL = ACCENT
 
 # Panel details
-PANEL_ROW_ALT = (28, 37, 60)    # zebra row
-FIELD_BG = C0
-FIELD_ACTIVE_BG = (23, 31, 49)
-DANGER = (244, 63, 94)          # rose-500
+PANEL_ROW_ALT = (250, 248, 244) # zebra row
+FIELD_BG = (255, 255, 255)
+FIELD_ACTIVE_BG = (253, 250, 243)
+DANGER = (178, 58, 58)

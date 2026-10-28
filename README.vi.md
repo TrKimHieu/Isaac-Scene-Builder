@@ -94,6 +94,21 @@ Tường được dựng như scene office của NVIDIA: hai tấm panel quay l�
 style của phòng nó quay vào), có bịt đầu tường và góc; cửa có khung + cánh thật (mặc định mở),
 cửa sổ và tường kính là module 3 m. Ví dụ: `data/maps/demo_architecture.json`.
 
+**Sinh scene tự động** (`src/map_generator.py`, tất định theo seed)
+```bash
+python tools/batch_generate_scenes.py --count 20 [--theme office|hospital|warehouse|residential]
+                                      [--density 0.12 0.3] [--size 8 6] [--seed 1] [--no-usd]
+python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
+```
+- Mặt bằng: hành lang + phòng (văn phòng / bệnh viện), chia phòng BSP có thể khuyết góc (nhà ở),
+  sảnh lớn + dãy văn phòng (kho); cửa theo cây khung nối các phòng, cửa chính, cửa sổ, vách kính
+  cho phòng họp; style và đèn theo phòng.
+- Nội thất theo loại phòng (bàn + ghế, bàn họp + ghế, giường + tủ đầu giường, dãy kệ có lối đi,
+  ...) dùng footprint đã đo; mỗi món phải giữ mọi cửa và ≥ 90 % vùng trống tới được với robot bán
+  kính 0,28 m. Điểm xuất phát ở cửa chính, mỗi phòng một waypoint.
+- Mỗi map: `data/maps/generated/gen_XXXX.json` (mở được bằng editor), BEV + occupancy theo độ cao +
+  file Nav2, `.usd` có collider / semantic; `index.csv` + báo cáo mật độ và histogram.
+
 **Đầu ra sẵn sàng cho mô phỏng**
 - `.usd`: `PhysicsScene` + collider tĩnh cho sàn, tường, cửa, cửa sổ, kính và mọi mesh nội thất;
   nhãn `UsdSemantics` theo class (`floor`, `wall`, `door`, `window`, `glass_wall`, `ceiling`,

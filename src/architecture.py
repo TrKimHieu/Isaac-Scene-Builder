@@ -9,6 +9,7 @@ Map additions (all optional, old maps load unchanged):
   "default_style": "office"
   "door_default": "open" | "closed"
   "door_state":   {"v:i,j": "closed", "h:i,j": "open"}   per-door override
+  "door_flip":    {"v:i,j": true}   door turned 180 deg (swings into the other room)
   edge values in vedges/hedges: 1 wall, 2 door, 3 window, 4 glass wall, 5 opening (no leaf)
 
 Geometry (Office kit, see config.KIT): a vedge (i,j) runs from (iC, jC) along +Y, a hedge
@@ -62,6 +63,16 @@ def cell_styles(map_data):
             st = painted.get((i, j), default)
             out[(i, j)] = st if st in STYLES else default
     return out
+
+
+def door_flipped(map_data, kind, i, j):
+    """True -> the door is turned 180 deg and swings into the other room."""
+    return bool((map_data.get("door_flip") or {}).get(edge_key(kind, i, j)))
+
+
+def door_yaw(map_data, kind, i, j, yaw):
+    """Frame yaw of a door on an edge whose modules use `yaw` (adds 180 when flipped)."""
+    return yaw + (180.0 if door_flipped(map_data, kind, i, j) else 0.0)
 
 
 def door_is_open(map_data, kind, i, j):
@@ -147,9 +158,10 @@ def plan_structure(map_data):
                 face_style(right), "wall")
             if t == EDGE_DOOR:
                 mid = _add(p0, u, CELL / 2.0)
-                put("Door%s_frame" % tag, KIT["door_frame"], mid + (0.0,), yaw, kind="door")
-                hinge = _add(mid, _rot(DOOR_HINGE, yaw))
-                leaf_yaw = yaw + (DOOR_OPEN_DEG if door_is_open(map_data, kind, i, j) else 0.0)
+                dyaw = door_yaw(map_data, kind, i, j, yaw)
+                put("Door%s_frame" % tag, KIT["door_frame"], mid + (0.0,), dyaw, kind="door")
+                hinge = _add(mid, _rot(DOOR_HINGE, dyaw))
+                leaf_yaw = dyaw + (DOOR_OPEN_DEG if door_is_open(map_data, kind, i, j) else 0.0)
                 put("Door%s_leaf" % tag, KIT["door_leaf"], hinge + (0.0,), leaf_yaw, kind="door")
                 h = _rot(DOOR_HANDLE[:2], leaf_yaw)
                 put("Door%s_handle" % tag, KIT["door_handle"],
@@ -223,6 +235,7 @@ def door_leaves(map_data):
             continue
         p0, dname, _r, _l = edge_frame(kind, i, j)
         u, yaw = DIRS[dname]
+        yaw = door_yaw(map_data, kind, i, j, yaw)
         hinge = _add(_add(p0, u, CELL / 2.0), _rot(DOOR_HINGE, yaw))
         tip = _add(hinge, _rot((0.0, -1.0), yaw + DOOR_OPEN_DEG), DOOR_LEAF_W)
         out.append((hinge[0], hinge[1], tip[0], tip[1]))

@@ -75,7 +75,7 @@ Làm theo thứ tự, sau khi xong Giai đoạn 1:
 > trong `src/`. **Cần bạn xác nhận hoặc bổ sung** những gì còn nhớ (tham số, định dạng output)
 > trước khi code.
 
-### 3a. `tools/batch_generate_scenes.py`
+### 3a. `tools/batch_generate_scenes.py` — ✅ XONG (2026-10-28, `src/map_generator.py`)
 Sinh hàng loạt map ngẫu nhiên theo đúng định dạng `data/maps/*.json`
 (`grid`, `cells`, `vedges`, `hedges`, `furniture`, `structure`), rồi build USD + BEV.
 
@@ -89,7 +89,7 @@ Sinh hàng loạt map ngẫu nhiên theo đúng định dạng `data/maps/*.json
   `--from-maps` (chỉ build lại các map có sẵn), `--out-prefix`.
 - Tách logic sinh map thành `src/map_generator.py` (thuần Python) để test được, giữ `tools/` mỏng.
 
-### 3b. `tools/check_density_distribution.py`
+### 3b. `tools/check_density_distribution.py` — ✅ XONG (2026-10-28)
 Thống kê phân bố mật độ của một tập map, dùng để kiểm tra dataset sinh ra có cân bằng không.
 
 - Với mỗi map: diện tích sàn, tổng footprint nội thất, **density = footprint / diện tích sàn**,

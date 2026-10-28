@@ -24,14 +24,15 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 from config import (CELL, RENDER_DIR, COLOR_DIR, C0, MESH_MARK, BG, PANEL_BG, TEXT, TEXT_DIM,
-                    BTN, BTN_HOVER, BTN_ACTIVE, ACCENT, GRID_LINE, SECTION_LINE)
+                    BTN, BTN_HOVER, BTN_ACTIVE, ACCENT, GRID_LINE, SECTION_LINE, BORDER, PLAN_BG)
+import ui_kit as ui
 import bev_export as bev
 import shape_tools as st
 
 WIN_W, WIN_H = 1160, 760
-PANEL_W = 300
-PAD = 16
-STATUS_H = 40
+PANEL_W = 320
+PAD = 34
+STATUS_H = 52
 
 GRID = GRID_LINE
 SECTION = SECTION_LINE
@@ -43,10 +44,11 @@ class ShapeEditor:
         pygame.display.set_caption("Isaac Scene Builder - Shape Editor")
         self.screen = pygame.display.set_mode((WIN_W, WIN_H), pygame.RESIZABLE)
         self.win_w, self.win_h = WIN_W, WIN_H
-        self.font = pygame.font.SysFont("consolas", 15)
-        self.font_s = pygame.font.SysFont("consolas", 13)
-        self.font_b = pygame.font.SysFont("consolas", 17, bold=True)
-        self.font_big = pygame.font.SysFont("consolas", 40, bold=True)
+        self.f = ui.fonts()
+        self.font = self.f["body"]
+        self.font_s = self.f["small"]
+        self.font_b = self.f["title"]
+        self.font_big = self.f["big"]
         self.clock = pygame.time.Clock()
 
         self.render_dir = render_dir
@@ -230,12 +232,16 @@ class ShapeEditor:
         pygame.display.flip()
 
     def draw_canvas(self):
-        pygame.draw.rect(self.screen, SECTION, self.canvas, 1)
+        ui.card(self.screen, self.canvas.inflate(24, 24), fill=PLAN_BG, radius=10)
         if self.tex is None:
+            ui.text(self.screen, "No renders yet", self.canvas.center, self.f["body"], TEXT_DIM,
+                    center=True)
             return
         iw, ih = self.img.size
         scaled = pygame.transform.smoothscale(self.tex, (int(iw * self.disp), int(ih * self.disp)))
         self.screen.blit(scaled, (self.dispx, self.dispy))
+        pygame.draw.rect(self.screen, BORDER, pygame.Rect(self.dispx, self.dispy,
+                         scaled.get_width(), scaled.get_height()), 1)
         # overlay bounding
         if self.mode == "box" and self.box:
             x0, y0 = self.img_to_scr(self.box[0], self.box[1])
@@ -250,63 +256,77 @@ class ShapeEditor:
     def draw_panel(self):
         px = self.win_w - PANEL_W
         pygame.draw.rect(self.screen, PANEL_BG, (px, 0, PANEL_W, self.win_h))
-        pygame.draw.line(self.screen, SECTION, (px, 0), (px, self.win_h))
+        pygame.draw.line(self.screen, BORDER, (px, 0), (px, self.win_h))
         self.buttons = []
         mx, my = pygame.mouse.get_pos()
-        y = 16
-        self.screen.blit(self.font_b.render("SHAPE EDITOR", True, TEXT), (px + 16, y)); y += 30
-        pygame.draw.line(self.screen, SECTION, (px + 16, y), (px + PANEL_W - 16, y)); y += 12
-
-        # asset info
-        name = self.asset or "(no image)"
-        self.screen.blit(self.font.render(name, True, TEXT), (px + 16, y)); y += 20
-        if self.files:
-            self.screen.blit(self.font_s.render("%d / %d" % (self.idx + 1, len(self.files)),
-                             True, TEXT_DIM), (px + 16, y)); y += 22
-        bw = (PANEL_W - 32 - 10) // 2
-        self._btn(px + 16, y, bw, "< Prev", "prev", mx, my)
-        self._btn(px + 16 + bw + 10, y, bw, "Next >", "next", mx, my); y += 34
-        pygame.draw.line(self.screen, SECTION, (px + 16, y), (px + PANEL_W - 16, y)); y += 12
-
-        # mode
-        self.screen.blit(self.font_s.render("BOUNDING TYPE", True, TEXT_DIM), (px + 16, y)); y += 18
-        self._btn(px + 16, y, bw, "1 Box", "box", mx, my, active=(self.mode == "box"))
-        self._btn(px + 16 + bw + 10, y, bw, "2 Circle", "circle", mx, my, active=(self.mode == "circle"))
+        bx, bw_full = px + 20, PANEL_W - 40
+        bw = (bw_full - 8) // 2
+        y = 22
+        ui.text(self.screen, "Shape Editor", (bx, y), self.f["title"], C0)
+        y += 26
+        ui.text(self.screen, "Footprints from top-down captures", (bx, y), self.f["subtitle"],
+                TEXT_DIM)
         y += 34
 
+        # asset
+        ui.tracked(self.screen, "Asset", (bx, y), self.f["caption"])
+        y += 22
+        ui.text(self.screen, self.asset or "(no image)", (bx, y), self.f["body"], C0)
+        y += 22
+        if self.files:
+            frame = getattr(self, "frame_m", CELL)
+            ui.text(self.screen, "%d of %d   \u00b7   frame %.1f m" % (self.idx + 1, len(self.files),
+                    frame), (bx, y), self.f["subtitle"], TEXT_DIM)
+            y += 22
+        self._btn(bx, y, bw, "\u2190  Previous", "prev", mx, my)
+        self._btn(bx + bw + 8, y, bw, "Next  \u2192", "next", mx, my)
+        y += 50
+
+        # mode
+        ui.tracked(self.screen, "Bounding", (bx, y), self.f["caption"])
+        y += 22
+        self._btn(bx, y, bw, "Box\t1", "box", mx, my, active=(self.mode == "box"))
+        self._btn(bx + bw + 8, y, bw, "Circle\t2", "circle", mx, my, active=(self.mode == "circle"))
+        y += 50
+
         # measured
+        ui.tracked(self.screen, "Size", (bx, y), self.f["caption"])
+        y += 22
         m = self.measured()
-        self.screen.blit(self.font_s.render("SIZE (meters)", True, TEXT_DIM), (px + 16, y)); y += 20
         if m:
             shape, w, h, r = m
-            if shape == "bbox":
-                lines = ["W = %.3f" % w, "H = %.3f" % h]
-            else:
-                lines = ["R = %.3f" % r]
+            vals = [("W", w), ("H", h)] if shape == "bbox" else [("R", r)]
+            for k, (lbl, v) in enumerate(vals):
+                cell = pygame.Rect(bx + k * (bw + 8), y, bw, 54)
+                ui.card(self.screen, cell, fill=PANEL_BG, with_shadow=False)
+                ui.text(self.screen, lbl, (cell.x + 12, cell.y + 6), self.f["caption"], TEXT_DIM)
+                ui.text(self.screen, "%.3f m" % v, (cell.x + 12, cell.y + 22), self.f["title"], ACCENT)
+            y += 66
         else:
-            lines = ["(no bounding yet)"]
-        for ln in lines:
-            self.screen.blit(self.font.render(ln, True, ACCENT), (px + 24, y)); y += 22
+            ui.text(self.screen, "Drag on the image, or Auto-fit", (bx, y), self.f["small"], TEXT_DIM)
+            y += 30
         y += 6
 
-        self._btn(px + 16, y, PANEL_W - 32, "Auto-fit object (A)", "auto", mx, my); y += 34
-        self._btn(px + 16, y, PANEL_W - 32, "Cut & Save shape (S)", "save", mx, my); y += 40
-        pygame.draw.line(self.screen, SECTION, (px + 16, y), (px + PANEL_W - 16, y)); y += 10
-        self._btn(px + 16, y, PANEL_W - 32, "Reload list (R)", "reload", mx, my)
+        self._btn(bx, y, bw_full, "Auto-fit object\tA", "auto", mx, my)
+        y += 42
+        self._btn(bx, y, bw_full, "Cut & save shape\tS", "save", mx, my, active=True)
+        y += 42
+        self._btn(bx, y, bw_full, "Reload list\tR", "reload", mx, my)
 
-    def _btn(self, x, y, w, label, key, mx, my, active=False, h=28):
+    def _btn(self, x, y, w, label, key, mx, my, active=False, h=34):
         rect = pygame.Rect(x, y, w, h)
-        hover = rect.collidepoint(mx, my)
-        col = BTN_ACTIVE if active else (BTN_HOVER if hover else BTN)
-        pygame.draw.rect(self.screen, col, rect, border_radius=5)
-        self.screen.blit(self.font_s.render(label, True, TEXT), (rect.x + 8, rect.y + h // 2 - 8))
+        ui.button(self.screen, rect, label, self.f["button"], active=active,
+                  hover=rect.collidepoint(mx, my))
         self.buttons.append((rect, key))
 
     def draw_status(self):
         y = self.win_h - STATUS_H
-        pygame.draw.rect(self.screen, C0, (0, y, self.win_w, STATUS_H))
-        pygame.draw.line(self.screen, SECTION, (0, y), (self.win_w, y))
-        self.screen.blit(self.font_s.render(self.msg, True, TEXT), (12, y + 12))
+        pygame.draw.rect(self.screen, PANEL_BG, (0, y, self.win_w, STATUS_H))
+        pygame.draw.line(self.screen, BORDER, (0, y), (self.win_w, y))
+        badge = pygame.Rect(16, y + (STATUS_H - 24) // 2, ui.pill_width(self.mode.upper(),
+                            self.f["caption"]), 24)
+        ui.pill(self.screen, badge, self.mode.upper(), self.f["caption"], active=True)
+        ui.text(self.screen, self.msg, (badge.right + 14, y + (STATUS_H - 20) // 2), self.f["body"], C0)
 
     # ---- loop ----
     def run(self):

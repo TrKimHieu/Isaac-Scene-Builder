@@ -182,3 +182,14 @@ def test_existing_maps_still_plan(path):
     assert items and all(it["asset"] for it in items)
     n_edges = sum(1 for v in list(m["vedges"].values()) + list(m["hedges"].values()) if v)
     assert len(arch.bev_edges(m)) == n_edges
+
+
+def test_door_flip_swings_into_other_room():
+    m = _map({(0, 0): 1, (1, 0): 1}, vedges={(1, 0): EDGE_DOOR})
+    (x0, _, x1, _), = arch.door_leaves(m)
+    assert x1 > x0                                   # default: into the +X room
+    m["door_flip"] = {"v:1,0": True}
+    (x0, _, x1, _), = arch.door_leaves(m)
+    assert x1 < x0                                   # flipped: into the -X room
+    frame = [it for it in _items(m, kind="door") if it["name"].endswith("frame")][0]
+    assert frame["yaw"] == 180

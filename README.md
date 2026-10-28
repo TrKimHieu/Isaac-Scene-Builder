@@ -95,6 +95,21 @@ style of the room it looks into), capped at free ends and corners; doors get a r
 leaf (open by default), windows and glass walls are full 3 m modules. Example:
 `data/maps/demo_architecture.json`.
 
+**Procedural scenes** (`src/map_generator.py`, deterministic per seed)
+```bash
+python tools/batch_generate_scenes.py --count 20 [--theme office|hospital|warehouse|residential]
+                                      [--density 0.12 0.3] [--size 8 6] [--seed 1] [--no-usd]
+python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
+```
+- Layouts: corridor + rooms (office / hospital), BSP rooms with an optional missing corner
+  (home), hall + office strip (warehouse); doors along a spanning tree, an entrance, windows,
+  glass fronts for meeting rooms; per-room style and lights.
+- Furniture by room type (desk + chair, table + chairs, bed + nightstand, rack rows with
+  aisles, ...) from the measured footprints; every item must keep all doors and >= 90 % of
+  the free space reachable for a 0.28 m robot. Spawn at the entrance, one waypoint per room.
+- Output per map: `data/maps/generated/gen_XXXX.json` (editable), BEV + height occupancy +
+  Nav2 files, `.usd` with colliders / semantics; `index.csv` + density report & histogram.
+
 **Simulation-ready output**
 - `.usd`: `PhysicsScene` + static colliders on floors, walls, doors, windows, glass and every
   furniture mesh; `UsdSemantics` class labels (`floor`, `wall`, `door`, `window`, `glass_wall`,

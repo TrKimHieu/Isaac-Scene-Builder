@@ -37,3 +37,6 @@ output/mesh_shapes/
 
 # Curated asset library (tools/asset_library.py fetch) - NOT versioned
 assets/library/
+
+# Procedurally generated maps (tools/batch_generate_scenes.py, reproducible by seed)
+data/maps/generated/

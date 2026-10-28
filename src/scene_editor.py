@@ -9,7 +9,8 @@ Usage:
               DRAG to fill a rectangular floor area. Right-click removes a cell.
   WALL  (2) - Click near a CELL EDGE: cycles none -> wall -> door -> window -> glass ->
               opening. DRAG along a row/column paints the EDGE TYPE chosen in the panel.
-              O over a door toggles it open/closed. Right-click clears an edge.
+              O over a door toggles it open/closed, P flips its swing side.
+              Right-click clears an edge.
   STYLE (4) - Paint a room style (office / hospital / warehouse / home) on floor cells:
               click or DRAG a rectangle; pick the style in the panel. Walls take the style
               of the room each face looks into.
@@ -47,7 +48,8 @@ import bev_export as bev
 from config import (PROJECT_ROOT, MAPS_DIR, CELL, SNAP as _SNAP, FURNITURE_CATEGORIES,
                     EDGE_NAMES, EDGE_CYCLE, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS,
                     EDGE_OPENING, STYLES, DEFAULT_STYLE, STYLE_COLORS, DOOR_DEFAULT,
-                    WINDOW_COL, GLASS_COL, ROBOT_COL, SPAWN_COL)
+                    WINDOW_COL, GLASS_COL, ROBOT_COL, SPAWN_COL, PLAN_BG, BORDER, ON_ACTIVE)
+import ui_kit as ui
 import architecture as arch
 from config import (C0, C1, C2, C3, C4, MESH_MARK, BG, GRID_LINE, FLOOR_COL,
                     FLOOR_HOVER, LIGHT_COL, WALL_COL, DOOR_COL, HOVER_EDGE,
@@ -60,9 +62,12 @@ SNAP = _SNAP
 
 WIN_W, WIN_H = 1240, 820
 MIN_W, MIN_H = 900, 680
-PANEL_W = 340
-PAD = 20
-STATUS_H = 46
+PANEL_W = 360
+# panel buttons laid out two per row
+HALF_KEYS = ("gx-", "gx+", "gy-", "gy+", "undo", "redo", "walls", "clear", "usd", "export",
+             "savemap", "load")
+PAD = 34
+STATUS_H = 52
 EDGE_HIT = 0.24          # edge-snap threshold (cell fraction)
 
 
@@ -74,9 +79,10 @@ class Editor:
         self.windowed_size = (WIN_W, WIN_H)
         self.fullscreen = False
         self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
-        self.font = pygame.font.SysFont("consolas", 16)
-        self.font_s = pygame.font.SysFont("consolas", 13)
-        self.font_b = pygame.font.SysFont("consolas", 18, bold=True)
+        self.f = ui.fonts()
+        self.font = self.f["body"]
+        self.font_s = self.f["small"]
+        self.font_b = self.f["title"]
         self.clock = pygame.time.Clock()
 
         self.nx, self.ny = 10, 8
@@ -92,6 +98,7 @@ class Editor:
         self.styles = {}       # (i,j) -> room style (unset = DEFAULT_STYLE)
         self.door_state = {}   # "v:i,j" -> "open" | "closed" (unset = door_default)
         self.door_default = DOOR_DEFAULT
+        self.door_flip = {}    # "v:i,j" -> True: door swings into the other room
         self.edge_type = EDGE_WALL          # what a wall-tool drag paints
         self.paint_style = "hospital"       # what the style tool paints
         self.robot = {}        # {"spawn": {x,y,yaw}, "waypoints": [[x,y], ...]}
@@ -418,7 +425,7 @@ class Editor:
         rad = max(5, int(self.cs) // 7)
         for k, (px, py) in enumerate(pts):
             pygame.draw.circle(self.screen, ROBOT_COL, (int(px), int(py)), rad)
-            s = self.font_s.render(str(k + 1), True, C0)
+            s = self.f["caption"].render(str(k + 1), True, C4)
             self.screen.blit(s, (int(px - s.get_width() / 2), int(py - s.get_height() / 2)))
         if sp:
             cx, cy = self.usd_to_screen(sp["x"], sp["y"])
@@ -428,6 +435,19 @@ class Editor:
             pygame.draw.circle(self.screen, SPAWN_COL, (int(cx), int(cy)), rad + 2)
             pygame.draw.line(self.screen, C0, (cx, cy), tip, 3)
             pygame.draw.circle(self.screen, SPAWN_COL, (int(tip[0]), int(tip[1])), 3)
+
+    def flip_door(self, mx, my):
+        """Turn the door under the cursor 180 deg (it then swings into the other room)."""
+        kind, i, j = self.nearest_edge(mx, my)
+        d = self.vedges if kind == "vedge" else self.hedges
+        if d.get((i, j)) != EDGE_DOOR:
+            self.msg = "No door here."
+            return
+        self._snapshot()
+        key = arch.edge_key(kind, i, j)
+        if self.door_flip.pop(key, None) is None:
+            self.door_flip[key] = True
+        self.msg = "Door swing flipped."
 
     def toggle_door(self, mx, my):
         """Open <-> closed for the door edge under the cursor."""
@@ -625,6 +645,7 @@ class Editor:
             "styles": {"%d,%d" % k: v for k, v in self.styles.items()},
             "door_default": self.door_default,
             "door_state": dict(self.door_state),
+            "door_flip": dict(self.door_flip),
             "robot": {"spawn": dict(self.robot["spawn"]) if self.robot.get("spawn") else None,
                       "waypoints": [list(w) for w in self.robot.get("waypoints", [])]},
         }
@@ -639,6 +660,7 @@ class Editor:
         self.styles = sb._ikey(m.get("styles"))
         self.door_state = dict(m.get("door_state") or {})
         self.door_default = m.get("door_default") or DOOR_DEFAULT
+        self.door_flip = dict(m.get("door_flip") or {})
         r = m.get("robot") or {}
         self.robot = {"spawn": dict(r["spawn"]) if r.get("spawn") else None,
                       "waypoints": [list(w) for w in r.get("waypoints") or []]}
@@ -1004,6 +1026,8 @@ class Editor:
         elif k == pygame.K_5: self.switch_tool("robot")
         elif k == pygame.K_o and self.tool == "wall":
             self.toggle_door(*pygame.mouse.get_pos())
+        elif k == pygame.K_p and self.tool == "wall":
+            self.flip_door(*pygame.mouse.get_pos())
         elif k == pygame.K_2: self.switch_tool("wall")
         elif k in (pygame.K_3, pygame.K_f): self.switch_tool("furniture")
         elif k == pygame.K_TAB:
@@ -1060,6 +1084,9 @@ class Editor:
     # ---- draw ----
     def draw(self):
         self.screen.fill(BG)
+        # the plan sits on a white sheet with a soft shadow
+        sheet = pygame.Rect(self.ox, self.oy, int(self.nx * self.cs), int(self.ny * self.cs))
+        ui.card(self.screen, sheet.inflate(24, 24), fill=PLAN_BG, radius=10)
         self.draw_grid()
         self.draw_panel()
         self.draw_status()
@@ -1079,8 +1106,10 @@ class Editor:
         for (i, j), s in self.cells.items():
             r = self.cell_rect(i, j)
             pygame.draw.rect(self.screen, STYLE_COLORS.get(self.styles.get((i, j)), FLOOR_COL), r)
-            if s == 2:
-                pygame.draw.circle(self.screen, LIGHT_COL, r.center, max(4, int(self.cs) // 6))
+            if s == 2:                          # ceiling light: small champagne dot + ring
+                rad = max(3, int(self.cs) // 11)
+                pygame.draw.circle(self.screen, LIGHT_COL, r.center, rad)
+                pygame.draw.circle(self.screen, LIGHT_COL, r.center, rad + 4, 1)
         # hover cell
         if hover and hover[0] == "cell" and 0 <= hover[1] < self.nx and 0 <= hover[2] < self.ny:
             if (hover[1], hover[2]) not in self.cells:
@@ -1133,7 +1162,7 @@ class Editor:
                     self.draw_edge("hedge", i, j0, -1)
 
     def draw_edge(self, kind, i, j, s):
-        w = max(4, int(self.cs) // 8)
+        w = max(3, int(self.cs) // 11)
         if kind == "vedge":
             x = self.ox + i * self.cs
             p0 = (x, self.oy + j * self.cs)
@@ -1155,6 +1184,8 @@ class Editor:
                 if arch.door_is_open(self.map_data_light(), kind[0], i, j):
                     # leaf swung open from the hinge into the +X (vedge) / -Y (hedge) room
                     n = (1, 0) if kind == "vedge" else (0, -1)
+                    if arch.door_flipped(self.map_data_light(), kind[0], i, j):
+                        n, b = (-n[0], -n[1]), a      # turned 180: other room, other jamb
                     L = 0.94 / sb.CELL * self.cs
                     pygame.draw.line(self.screen, DOOR_COL, b,
                                      (b[0] + n[0] * L, b[1] + n[1] * L), max(2, w // 2))
@@ -1170,7 +1201,8 @@ class Editor:
 
     def map_data_light(self):
         """Just what architecture.door_is_open() needs (cheap, called per drawn door)."""
-        return {"door_default": self.door_default, "door_state": self.door_state}
+        return {"door_default": self.door_default, "door_state": self.door_state,
+                "door_flip": self.door_flip}
 
     def _get_mesh_surface(self, asset, color=False):
         """Footprint surface from mesh_shapes/<asset>.png (cached).
@@ -1261,9 +1293,9 @@ class Editor:
             if selected:
                 pygame.draw.circle(self.screen, ACCENT, (int(sx), int(sy)), rpx + 4, 2)
             pygame.draw.circle(self.screen, fill, (int(sx), int(sy)), rpx)
-            pygame.draw.circle(self.screen, BG, (int(sx), int(sy)), rpx, 1)
+            pygame.draw.circle(self.screen, PLAN_BG, (int(sx), int(sy)), rpx, 1)
             ex, ey = sx + math.cos(math.radians(yaw)) * rpx, sy + math.sin(math.radians(yaw)) * rpx
-            pygame.draw.line(self.screen, ACCENT if selected else BG, (sx, sy), (ex, ey), 2)
+            pygame.draw.line(self.screen, ACCENT if selected else PLAN_BG, (sx, sy), (ex, ey), 2)
             return
 
         # bbox (default): w x h rectangle rotated by yaw
@@ -1274,34 +1306,36 @@ class Editor:
             pygame.draw.polygon(self.screen, ACCENT, ring, 2)
         pts = self._rot_rect_pts(sx, sy, wpx, hpx, yaw)
         pygame.draw.polygon(self.screen, fill, pts)
-        pygame.draw.polygon(self.screen, BG, pts, 1)
+        pygame.draw.polygon(self.screen, PLAN_BG, pts, 1)
         ex, ey = sx + math.cos(math.radians(yaw)) * wpx / 2, sy + math.sin(math.radians(yaw)) * hpx / 2
-        pygame.draw.line(self.screen, ACCENT if selected else BG, (sx, sy), (ex, ey), 2)
+        pygame.draw.line(self.screen, ACCENT if selected else PLAN_BG, (sx, sy), (ex, ey), 2)
 
     def _btn_groups(self):
         groups = [
-            ("TOOLS", [("floor", "1 Floor"), ("wall", "2 Wall"), ("furni", "3 Furniture"),
-                       ("style", "4 Style"), ("robot", "5 Robot")]),
-            ("HOA TAC", [("undo", "Undo (Ctrl+Z)"), ("redo", "Redo (Ctrl+Y)")]),
-            ("GRID", [("walls", "Auto-walls (W)"), ("clear", "Clear (C)"),
-                      ("gx-", "X -"), ("gx+", "X +"), ("gy-", "Y -"), ("gy+", "Y +")]),
-            ("FILE", [("usd", "SAVE .usd (S)"), ("export", "Export BEV (B)"),
-                     ("savemap", "Save map (Ctrl+S)"), ("load", "Load map (L)")]),
+            ("Tools", [("floor", "Floor	1"), ("wall", "Wall	2"), ("furni", "Furniture	3"),
+                       ("style", "Style	4"), ("robot", "Robot	5")]),
+            ("Edit", [("undo", "Undo	Ctrl+Z"), ("redo", "Redo	Ctrl+Y")]),
+            ("Grid", [("walls", "Auto-walls	W"), ("clear", "Clear	C"),
+                      ("gx-", "Width  −"), ("gx+", "Width  +"),
+                      ("gy-", "Depth  −"), ("gy+", "Depth  +")]),
+            ("File", [("usd", "Save USD	S"), ("export", "Export BEV	B"),
+                     ("savemap", "Save map	Ctrl+S"), ("load", "Load map	L")]),
         ]
         if self.tool == "wall":
-            groups.insert(1, ("EDGE TYPE (drag)", [("et_%d" % e, EDGE_NAMES[e])
+            groups.insert(1, ("Edge type", [("et_%d" % e, EDGE_NAMES[e])
                                                    for e in EDGE_CYCLE if e] +
-                              [("door_def", "Doors: " + self.door_default)]))
+                              [("door_def", "Doors " + self.door_default + "	O / P")]))
         elif self.tool == "style":
-            groups.insert(1, ("ROOM STYLE", [("st_" + k, v["label"]) for k, v in STYLES.items()]))
+            groups.insert(1, ("Room style", [("st_" + k, v["label"]) for k, v in STYLES.items()]))
         return groups
 
     def draw_panel(self):
         px = self.win_w - PANEL_W
         pygame.draw.rect(self.screen, PANEL_BG, (px, 0, PANEL_W, self.win_h))
+        pygame.draw.line(self.screen, BORDER, (px, 0), (px, self.win_h))
         mx, my = pygame.mouse.get_pos()
-        bx = px + 16
-        bw_full = PANEL_W - 32
+        bx = px + 20
+        bw_full = PANEL_W - 40
         self.buttons = []
         self._pal_rects = []
 
@@ -1309,40 +1343,41 @@ class Editor:
         # clamp before drawing (use previous frame limit) to avoid jitter on resize
         self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
         # clip the panel area (excluding status bar) so scrolled content stays inside
-        self.screen.set_clip(pygame.Rect(px, 0, PANEL_W, avail_h))
-        y = 16 - self.panel_scroll
+        self.screen.set_clip(pygame.Rect(px + 1, 0, PANEL_W - 1, avail_h))
+        y = 22 - self.panel_scroll
 
-        self.screen.blit(self.font_b.render("SCENE EDITOR", True, TEXT), (px + 16, y)); y += 30
-        pygame.draw.line(self.screen, SECTION_LINE, (px + 16, y), (px + PANEL_W - 16, y)); y += 10
+        ui.text(self.screen, "Scene Editor", (bx, y), self.f["title"], C0)
+        y += 26
+        ui.text(self.screen, "Isaac Scene Builder", (bx, y), self.f["subtitle"], TEXT_DIM)
+        y += 30
 
         for title, defs in self._btn_groups():
-            self.screen.blit(self.font_s.render(title, True, TEXT_DIM), (bx, y)); y += 18
+            ui.tracked(self.screen, title, (bx, y), self.f["caption"])
+            y += 22
             i = 0
             col = 0                      # column of the next half-width button
             while i < len(defs):
                 key, label = defs[i]
-                small = key in ("gx-", "gx+", "gy-", "gy+") or key[:3] in ("et_", "st_")
+                small = key in HALF_KEYS or key[:3] in ("et_", "st_")
                 if small:
-                    bw = (bw_full - 12) // 2
-                    rect = pygame.Rect(bx + col * (bw + 12), y, bw, 26)
+                    bw = (bw_full - 8) // 2
+                    rect = pygame.Rect(bx + col * (bw + 8), y, bw, 32)
                     self._draw_button(rect, key, label, mx, my)
                     if col == 1:
-                        y += 32
+                        y += 40
                     col = 1 - col
                     i += 1
                     continue
                 if col == 1:                 # finish a half-filled row first
-                    y += 32
+                    y += 40
                     col = 0
-                rect = pygame.Rect(bx, y, bw_full, 30)
+                rect = pygame.Rect(bx, y, bw_full, 34)
                 self._draw_button(rect, key, label, mx, my)
-                y += 36
+                y += 42
                 i += 1
             if col == 1:
-                y += 32
-            y += 8
-            pygame.draw.line(self.screen, SECTION_LINE, (px + 16, y - 2), (px + PANEL_W - 16, y - 2))
-            y += 6
+                y += 40
+            y += 14
 
         # transform inspector (only when a furniture is selected)
         if self.selected is not None and self.tool == "furniture" and 0 <= self.selected < len(self.furniture):
@@ -1358,185 +1393,180 @@ class Editor:
 
         # palette (furniture list) - filtered by category + search
         self._pal_cat_rects = []
-        self.screen.blit(self.font.render("Furniture:", True, TEXT_DIM), (px + 16, y)); y += 22
+        ui.tracked(self.screen, "Furniture", (bx, y), self.f["caption"])
+        y += 22
 
-        # category tabs
+        # category tabs (pills)
         categories = ["All"] + list(self.palette_categories().keys())
-        tab_x = px + 16
+        tab_x = bx
         for cat_name in categories:
             active = (cat_name == self._pal_cat)
-            tab_w = self.font_s.size(cat_name)[0] + 12
-            if tab_x + tab_w > px + PANEL_W - 16:
-                tab_x = px + 16
-                y += 22
-            tab_rect = pygame.Rect(tab_x, y, tab_w, 18)
-            col = BTN_ACTIVE if active else BTN
-            pygame.draw.rect(self.screen, col, tab_rect, border_radius=4)
-            self.screen.blit(self.font_s.render(cat_name, True, TEXT if active else TEXT_DIM),
-                             (tab_rect.x + 6, tab_rect.y + 2))
+            tab_w = ui.pill_width(cat_name, self.f["caption"], pad=10)
+            if tab_x + tab_w > px + PANEL_W - 20:
+                tab_x = bx
+                y += 30
+            tab_rect = pygame.Rect(tab_x, y, tab_w, 24)
+            ui.pill(self.screen, tab_rect, cat_name, self.f["caption"], active=active,
+                    hover=tab_rect.collidepoint(mx, my))
             self._pal_cat_rects.append((cat_name, tab_rect))
             tab_x += tab_w + 6
-        y += 24
+        y += 34
 
         # search field
-        search_label = self._pal_filter if self._pal_filter else "Search..."
-        search_bg = FIELD_ACTIVE_BG if getattr(self, '_pal_search_active', False) else FIELD_BG
-        self._pal_search_rect = pygame.Rect(px + 16, y, PANEL_W - 32, 22)
-        pygame.draw.rect(self.screen, search_bg, self._pal_search_rect, border_radius=4)
-        pygame.draw.rect(self.screen, SECTION_LINE, self._pal_search_rect, 1, border_radius=4)
-        prefix = "> " if self._pal_search_active else "  "
-        col = TEXT if self._pal_filter else TEXT_DIM
-        self.screen.blit(self.font_s.render(prefix + search_label, True, col),
-                         (self._pal_search_rect.x + 6, self._pal_search_rect.y + 3))
-        y += 26
+        searching = getattr(self, '_pal_search_active', False)
+        self._pal_search_rect = pygame.Rect(bx, y, bw_full, 32)
+        if self._pal_filter or searching:
+            caret = "|" if searching and (pygame.time.get_ticks() // 500) % 2 == 0 else ""
+            ui.field(self.screen, self._pal_search_rect, self._pal_filter + caret, self.font_s,
+                     active=searching)
+        else:
+            ui.field(self.screen, self._pal_search_rect, "Search furniture, room, category",
+                     self.font_s, placeholder=True)
+        y += 42
 
         # filtered items
         fp = self.filtered_palette()
         self._pal_rects = []
         for filt_idx, (name, _rad) in enumerate(fp):
             real_idx = self.palette.index((name, _rad))
-            rect = pygame.Rect(px + 16, y, PANEL_W - 32, 19)
+            rect = pygame.Rect(bx - 6, y, bw_full + 12, 26)
             sel = (real_idx == self.pal_sel and self.tool == "furniture")
             if sel:
-                pygame.draw.rect(self.screen, FURNI_SEL, rect, border_radius=4)
-            elif filt_idx % 2 == 1:
-                pygame.draw.rect(self.screen, PANEL_ROW_ALT, rect, border_radius=4)
-            self.screen.blit(self.font_s.render(name, True, TEXT if sel else TEXT_DIM),
-                             (rect.x + 8, rect.y + 3))
+                ui.selected_row(self.screen, rect)
+            elif rect.collidepoint(mx, my):
+                pygame.draw.rect(self.screen, BTN_HOVER, rect, border_radius=6)
+            ui.text(self.screen, name, (rect.x + 12, rect.y + 4), self.font_s,
+                    C0 if sel else TEXT)
             self._pal_rects.append((real_idx, rect))
-            y += 22
+            y += 28
         if not fp:
-            self.screen.blit(self.font_s.render("(Khong tim thay)", True, TEXT_DIM), (px + 24, y))
-            y += 22
-        y += 6
+            ui.text(self.screen, "No match", (bx, y + 4), self.font_s, TEXT_DIM)
+            y += 28
+        y += 10
 
-        # tinh gioi han cuon + reset clip
-        content_h = y + self.panel_scroll        # tong chieu cao noi dung (tu 16)
+        # scroll limits + reset clip
+        content_h = y + self.panel_scroll
         self._panel_max_scroll = max(0, content_h - avail_h + 8)
         self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
         self.screen.set_clip(None)
 
-        # scrollbar (only when content overflows)
+        # slim scrollbar (only when content overflows)
         if self._panel_max_scroll > 0:
             bar_h = max(30, int(avail_h * avail_h / float(content_h)))
             bar_y = int((avail_h - bar_h) * self.panel_scroll / self._panel_max_scroll)
-            pygame.draw.rect(self.screen, BTN_HOVER, (self.win_w - 5, bar_y, 4, bar_h), border_radius=2)
+            pygame.draw.rect(self.screen, BORDER, (self.win_w - 6, bar_y + 4, 3, bar_h - 8),
+                             border_radius=2)
 
     def draw_transform_panel(self, px, y):
         f = self.furniture[self.selected]
         mx, my = pygame.mouse.get_pos()
-        self.screen.blit(self.font_s.render("TRANSFORM", True, ACCENT), (px + 16, y)); y += 18
-        pygame.draw.line(self.screen, ACCENT_DIM, (px + 16, y), (px + PANEL_W - 16, y)); y += 8
-        self.screen.blit(self.font_s.render(f["asset"], True, TEXT_DIM), (px + 16, y)); y += 22
+        bx = px + 20
+        card = pygame.Rect(bx - 8, y - 6, PANEL_W - 24, 10)       # height fixed below
+        top = y
+        y += 8
+        ui.tracked(self.screen, "Transform", (bx, y), self.f["caption"], ACCENT)
+        y += 20
+        ui.text(self.screen, f["asset"], (bx, y), self.f["body"], C0)
+        y += 28
 
         self.field_rects = {}
-        for name, label in (("x", "X (m)"), ("y", "Y (m)"), ("yaw", "Yaw (deg)")):
+        for name, label in (("x", "X  m"), ("y", "Y  m"), ("yaw", "Yaw  deg")):
             y = self._draw_field_row(px, y, name, label, f.get(name, 0.0), mx, my)
-        y += 4
+        y += 6
 
         # --- SHAPE ---
         shape = f.get("shape", "bbox")
-        self.screen.blit(self.font_s.render("SHAPE", True, ACCENT), (px + 16, y)); y += 18
-        bw = (PANEL_W - 32 - 2 * 8) // 3
+        ui.tracked(self.screen, "Shape", (bx, y), self.f["caption"], ACCENT)
+        y += 20
+        bw = (PANEL_W - 40 - 2 * 6) // 3
         for k, (skey, slabel) in enumerate((("bbox", "BBox"), ("sphere", "Sphere"), ("mesh", "Mesh"))):
-            rect = pygame.Rect(px + 16 + k * (bw + 8), y, bw, 26)
+            rect = pygame.Rect(bx + k * (bw + 6), y, bw, 30)
             self._draw_shape_button(rect, skey, slabel, shape, mx, my)
-        y += 34
+        y += 40
         if shape == "bbox":
-            y = self._draw_field_row(px, y, "w", "W (m)", f.get("w", 0.8), mx, my)
-            y = self._draw_field_row(px, y, "h", "H (m)", f.get("h", 0.8), mx, my)
+            y = self._draw_field_row(px, y, "w", "W  m", f.get("w", 0.8), mx, my)
+            y = self._draw_field_row(px, y, "h", "H  m", f.get("h", 0.8), mx, my)
         elif shape == "sphere":
-            y = self._draw_field_row(px, y, "r", "R (m)", f.get("r", 0.4), mx, my)
+            y = self._draw_field_row(px, y, "r", "R  m", f.get("r", 0.4), mx, my)
         else:  # mesh
-            self.screen.blit(self.font_s.render("Mesh: (no data yet)", True, TEXT_DIM),
-                             (px + 16, y + 2)); y += 22
+            ui.text(self.screen, "Real footprint from the top-down capture", (bx, y + 2),
+                    self.font_s, TEXT_DIM)
+            y += 26
         y += 6
 
-        bw2 = (PANEL_W - 32 - 12) // 2
-        dup_rect = pygame.Rect(px + 16, y, bw2, 26)
-        del_rect = pygame.Rect(px + 16 + bw2 + 12, y, bw2, 26)
+        bw2 = (PANEL_W - 40 - 8) // 2
+        dup_rect = pygame.Rect(bx, y, bw2, 32)
+        del_rect = pygame.Rect(bx + bw2 + 8, y, bw2, 32)
         self._draw_button(dup_rect, "tf_dup", "Duplicate", mx, my)
         self._draw_button(del_rect, "tf_del", "Delete", mx, my, danger=True)
-        y += 34
-        pygame.draw.line(self.screen, SECTION_LINE, (px + 16, y - 2), (px + PANEL_W - 16, y - 2))
-        y += 8
-        return y
+        y += 44
+        # gold hairline frame around the inspector
+        card.h = y - top - 2
+        pygame.draw.rect(self.screen, ACCENT_DIM, card, 1, border_radius=10)
+        return y + 12
 
     def _draw_shape_button(self, rect, skey, slabel, cur_shape, mx, my):
-        active = (skey == cur_shape)
-        hover = rect.collidepoint(mx, my)
-        col = ACCENT_DIM if active else (BTN_HOVER if hover else BTN)
-        pygame.draw.rect(self.screen, col, rect, border_radius=5)
-        if active:
-            pygame.draw.rect(self.screen, ACCENT, rect, 1, border_radius=5)
-        self.screen.blit(self.font_s.render(slabel, True, TEXT), (rect.x + 8, rect.y + rect.h // 2 - 8))
+        ui.button(self.screen, rect, slabel, self.f["button"], active=(skey == cur_shape),
+                  hover=rect.collidepoint(mx, my), align="center")
         self.buttons.append((rect, "shape_" + skey, slabel))
 
     def _draw_field_row(self, px, y, name, label, value, mx, my):
-        row_h = 24
-        lbl_w = 58
-        step_w = 22
+        row_h = 30
+        lbl_w = 70
+        step_w = 30
         gap = 6
-        self.screen.blit(self.font_s.render(label, True, TEXT_DIM), (px + 16, y + 5))
-        minus_rect = pygame.Rect(px + 16 + lbl_w, y, step_w, row_h)
-        box_w = (PANEL_W - 32) - lbl_w - 2 * step_w - 2 * gap
+        bx = px + 20
+        ui.text(self.screen, label, (bx, y + 7), self.font_s, TEXT_DIM)
+        minus_rect = pygame.Rect(bx + lbl_w, y, step_w, row_h)
+        box_w = (PANEL_W - 40) - lbl_w - 2 * step_w - 2 * gap
         box_rect = pygame.Rect(minus_rect.right + gap, y, box_w, row_h)
         plus_rect = pygame.Rect(box_rect.right + gap, y, step_w, row_h)
 
-        self._draw_button(minus_rect, "step%s-" % name, "-", mx, my)
-        self._draw_button(plus_rect, "step%s+" % name, "+", mx, my)
+        self._draw_button(minus_rect, "step%s-" % name, "-", mx, my, center=True)
+        self._draw_button(plus_rect, "step%s+" % name, "+", mx, my, center=True)
 
         active = (self.active_field == name)
-        pygame.draw.rect(self.screen, FIELD_ACTIVE_BG if active else FIELD_BG, box_rect, border_radius=4)
-        pygame.draw.rect(self.screen, ACCENT if active else SECTION_LINE, box_rect, 1, border_radius=4)
         if active:
             blink = (pygame.time.get_ticks() // 500) % 2 == 0
-            txt = self.field_buffer + ("_" if blink else "")
+            txt = self.field_buffer + ("|" if blink else "")
         else:
             txt = ("%d" % int(round(value))) if name == "yaw" else ("%.2f" % value)
-        self.screen.blit(self.font_s.render(txt, True, TEXT), (box_rect.x + 6, box_rect.y + 4))
+        ui.field(self.screen, box_rect, txt, self.f["mono"], active=active)
         self.field_rects[name] = box_rect
-        return y + row_h + 6
+        return y + row_h + 8
 
-    def _draw_button(self, rect, key, label, mx, my, danger=False):
+    def _draw_button(self, rect, key, label, mx, my, danger=False, center=False):
         tool_of = {"floor": "floor", "wall": "wall", "furni": "furniture", "style": "style",
                    "robot": "robot"}
         active = (tool_of.get(key) == self.tool or key == "et_%d" % self.edge_type
                   or key == "st_" + self.paint_style)
-        hover = rect.collidepoint(mx, my)
-        if danger:
-            # Delete button: dark ground (C0) to stand out, brightens on hover
-            col = C1 if hover else C0
-        else:
-            col = BTN_ACTIVE if active else (BTN_HOVER if hover else BTN)
-        pygame.draw.rect(self.screen, col, rect, border_radius=5)
-        self.screen.blit(self.font_s.render(label, True, TEXT), (rect.x + 8, rect.y + rect.h // 2 - 8))
+        ui.button(self.screen, rect, label, self.f["button"], active=active and not danger,
+                  hover=rect.collidepoint(mx, my), danger=danger,
+                  align="center" if center else "left")
         self.buttons.append((rect, key, label))
 
     def draw_status(self):
         y = self.win_h - STATUS_H
-        pygame.draw.rect(self.screen, C0, (0, y, self.win_w, STATUS_H))
-        pygame.draw.line(self.screen, SECTION_LINE, (0, y), (self.win_w, y))
+        pygame.draw.rect(self.screen, PANEL_BG, (0, y, self.win_w, STATUS_H))
+        pygame.draw.line(self.screen, BORDER, (0, y), (self.win_w, y))
         nxt = os.path.basename(sb.next_scene_path())
-        badge_col = ACCENT if self.tool == "furniture" else BTN_ACTIVE
-        badge_surf = self.font_s.render(self.tool.upper(), True, C0)
-        badge_rect = pygame.Rect(12, y + 6, badge_surf.get_width() + 16, 20)
-        pygame.draw.rect(self.screen, badge_col, badge_rect, border_radius=4)
-        self.screen.blit(badge_surf, (badge_rect.x + 8, badge_rect.y + 3))
-        info = "Grid:%dx%d  floor:%d light:%d props:%d  place:%s  yaw:%d  zoom:%d%%  -> %s" % (
+        label = self.tool.upper()
+        bw = ui.pill_width(label, self.f["caption"], pad=12)
+        badge = pygame.Rect(16, y + (STATUS_H - 24) // 2, bw, 24)
+        ui.pill(self.screen, badge, label, self.f["caption"], active=True)
+        ui.text(self.screen, self.msg, (badge.right + 14, y + 7), self.f["body"], C0)
+        info = "Grid %d x %d   ·   %d floor   ·   %d lights   ·   %d props   ·   %s   ·   %d%%   ·   %s" % (
             self.nx, self.ny,
             len(self.cells), sum(1 for v in self.cells.values() if v == 2),
-            len(self.furniture), self.place_shape.upper(), int(self.cur_yaw),
-            int(self.zoom * 100), nxt)
-        self.screen.blit(self.font_s.render(info, True, TEXT_DIM), (badge_rect.right + 10, y + 8))
-        self.screen.blit(self.font.render(self.msg, True, TEXT), (12, y + 24))
+            len(self.furniture), self.place_shape, int(self.zoom * 100), nxt)
+        ui.text(self.screen, info, (badge.right + 14, y + 27), self.f["subtitle"], TEXT_DIM)
 
-    # ---- menu chuot phai ----
+    # ---- context menu ----
     def _ctx_menu_geometry(self):
         if not self.ctx_menu:
             return None
         mx, my = self.ctx_menu["pos"]
-        item_w, item_h = 150, 28
+        item_w, item_h = 170, 32
         n = len(self.ctx_menu["items"])
         x0 = min(mx, self.win_w - item_w - 8)
         y0 = min(my, self.win_h - n * item_h - 8)
@@ -1552,17 +1582,16 @@ class Editor:
     def draw_ctx_menu(self):
         if not self.ctx_menu:
             return
-        geo = self._ctx_menu_geometry()
-        x0, y0, w, h = geo
+        x0, y0, w, h = self._ctx_menu_geometry()
         n = len(self.ctx_menu["items"])
-        pygame.draw.rect(self.screen, PANEL_BG, (x0 - 3, y0 - 3, w + 6, n * h + 6), border_radius=6)
+        ui.card(self.screen, pygame.Rect(x0 - 6, y0 - 6, w + 12, n * h + 12), radius=10)
         mx, my = pygame.mouse.get_pos()
         for i, (key, label) in enumerate(self.ctx_menu["items"]):
             rect = self._ctx_item_rect(i)
-            col = BTN_HOVER if rect.collidepoint(mx, my) else BTN
-            pygame.draw.rect(self.screen, col, rect, border_radius=4)
-            txt_col = C0 if key == "delete" else TEXT
-            self.screen.blit(self.font_s.render(label, True, txt_col), (rect.x + 10, rect.y + 7))
+            if rect.collidepoint(mx, my):
+                pygame.draw.rect(self.screen, BTN_HOVER, rect, border_radius=6)
+            ui.text(self.screen, label, (rect.x + 12, rect.y + 7), self.f["button"],
+                    DANGER if key == "delete" else TEXT)
 
     # ---- loop ----
     def run(self):
