@@ -36,6 +36,7 @@ from config import (PROJECT_ROOT, PROP_DIRS, PROPS_REL, CELL, WALL_H,
                     LIGHT_RADIUS, LIGHT_INTENSITY, LIGHT_COLOR,
                     LIGHT_EXPOSURE, LIGHT_CONE_ANGLE, LIGHT_CONE_SOFTNESS)
 from utils import safe_name, load_prop_shapes, load_library, ikey
+import robots
 
 
 # Re-export for backward compatibility
@@ -412,7 +413,8 @@ def add_colliders(stage, root_prim):
 
 
 def add_robot_markers(stage, robot):
-    """/World/Robot/Spawn + /World/Robot/Waypoints/WP_xx (guide-purpose markers)."""
+    """/World/Robot/Spawn (+ Footprint of the robot model) + /World/Robot/Waypoints/WP_xx
+    (guide-purpose markers)."""
     if not robot:
         return 0
     UsdGeom.Scope.Define(stage, "/World/Robot")
@@ -428,6 +430,17 @@ def add_robot_markers(stage, robot):
         cone.CreateAxisAttr("X")                     # points along the robot heading
         cone.CreatePurposeAttr(UsdGeom.Tokens.guide)
         xf.GetPrim().SetCustomDataByKey("robot:role", "spawn")
+        spec = robots.get(robot.get("model"))
+        if spec:                                     # footprint outline of the robot model
+            xf.GetPrim().SetCustomDataByKey("robot:model", spec["id"])
+            pts = [Gf.Vec3f(float(x), float(y), 0.01) for x, y in spec["footprint"]["points"]]
+            curve = UsdGeom.BasisCurves.Define(stage, "/World/Robot/Spawn/Footprint")
+            curve.CreateTypeAttr(UsdGeom.Tokens.linear)
+            curve.CreateWrapAttr(UsdGeom.Tokens.periodic)
+            curve.CreatePointsAttr(pts)
+            curve.CreateCurveVertexCountsAttr([len(pts)])
+            curve.CreateWidthsAttr([0.01])
+            curve.CreatePurposeAttr(UsdGeom.Tokens.guide)
         n += 1
     UsdGeom.Scope.Define(stage, "/World/Robot/Waypoints")
     for k, wp in enumerate(robot.get("waypoints") or []):

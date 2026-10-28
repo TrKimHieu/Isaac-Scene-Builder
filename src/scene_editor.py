@@ -14,7 +14,9 @@ Usage:
   STYLE (4) - Paint a room style (office / hospital / warehouse / home) on floor cells:
               click or DRAG a rectangle; pick the style in the panel. Walls take the style
               of the room each face looks into.
-  ROBOT (5) - Click = add a waypoint, Shift+click = robot spawn, wheel = spawn heading,
+  ROBOT (5) - Pick the robot model in the panel (JetAuto Pro, JetBot, TurtleBot 3/4 -
+              data/robots); its footprint is drawn to scale at the spawn.
+              Click = add a waypoint, Shift+click = robot spawn, wheel = spawn heading,
               right-click = remove the nearest waypoint / spawn. Exported with the BEV as
               <stem>_nav.yaml + follow_waypoints.py (ROS 2 Nav2) and as USD markers.
   FURNITURE (3) - Pick a prop in the palette, click empty space to place (auto-selected).
@@ -51,6 +53,7 @@ from config import (PROJECT_ROOT, MAPS_DIR, CELL, SNAP as _SNAP, FURNITURE_CATEG
                     WINDOW_COL, GLASS_COL, ROBOT_COL, SPAWN_COL, PLAN_BG, BORDER, ON_ACTIVE)
 import ui_kit as ui
 import architecture as arch
+import robots
 from config import (C0, C1, C2, C3, C4, MESH_MARK, BG, GRID_LINE, FLOOR_COL,
                     FLOOR_HOVER, LIGHT_COL, WALL_COL, DOOR_COL, HOVER_EDGE,
                     PANEL_BG, BTN, BTN_HOVER, BTN_ACTIVE, TEXT, TEXT_DIM,
@@ -101,7 +104,7 @@ class Editor:
         self.door_flip = {}    # "v:i,j" -> True: door swings into the other room
         self.edge_type = EDGE_WALL          # what a wall-tool drag paints
         self.paint_style = "hospital"       # what the style tool paints
-        self.robot = {}        # {"spawn": {x,y,yaw}, "waypoints": [[x,y], ...]}
+        self.robot = {"model": robots.DEFAULT_ROBOT}   # + "spawn": {x,y,yaw}, "waypoints"
         self.place_shape = "bbox"   # default shape when placing a new prop
         self.cur_yaw = 0.0
         self.msg = "Ready. FLOOR tool: click / drag to paint floor."
@@ -416,7 +419,8 @@ class Editor:
             self.msg = "Waypoint %d removed." % (best + 1)
 
     def draw_robot(self):
-        """Spawn arrow + numbered waypoints joined by the route polyline."""
+        """Robot footprint at the spawn (to scale) + heading arrow, numbered waypoints
+        joined by the route polyline."""
         sp = self.robot.get("spawn")
         pts = [self.usd_to_screen(x, y) for x, y in self.robot.get("waypoints") or []]
         route = ([self.usd_to_screen(sp["x"], sp["y"])] if sp else []) + pts
@@ -427,14 +431,54 @@ class Editor:
             pygame.draw.circle(self.screen, ROBOT_COL, (int(px), int(py)), rad)
             s = self.f["caption"].render(str(k + 1), True, C4)
             self.screen.blit(s, (int(px - s.get_width() / 2), int(py - s.get_height() / 2)))
+        spec = robots.get(self.robot.get("model"))
+        if sp and spec:
+            body = [self.usd_to_screen(x, y) for x, y in
+                    robots.place(spec, sp["x"], sp["y"], sp.get("yaw", 0.0))]
+            ring = self.usd_to_screen(sp["x"], sp["y"])
+            pygame.draw.circle(self.screen, SPAWN_COL, (int(ring[0]), int(ring[1])),
+                               max(3, int(spec["r_circ"] / sb.CELL * self.cs)), 1)
+            if len(body) >= 3:
+                pygame.draw.polygon(self.screen, SPAWN_COL, body)
+                pygame.draw.polygon(self.screen, C0, body, 1)
         if sp:
             cx, cy = self.usd_to_screen(sp["x"], sp["y"])
             a = math.radians(sp.get("yaw", 0.0))
             L = rad * 2.4
+            if spec:                     # arrow from the footprint centre past its front
+                L = max(L, spec["r_circ"] / sb.CELL * self.cs * 1.6)
             tip = (cx + math.cos(a) * L, cy + math.sin(a) * L)
-            pygame.draw.circle(self.screen, SPAWN_COL, (int(cx), int(cy)), rad + 2)
+            pygame.draw.circle(self.screen, SPAWN_COL, (int(cx), int(cy)), 4 if spec else rad + 2)
             pygame.draw.line(self.screen, C0, (cx, cy), tip, 3)
             pygame.draw.circle(self.screen, SPAWN_COL, (int(tip[0]), int(tip[1])), 3)
+
+    def draw_robot_card(self, bx, y, w):
+        """Footprint preview + size of the chosen robot model."""
+        spec = robots.get(self.robot.get("model"))
+        if not spec:
+            ui.text(self.screen, "No robots - run tools/import_robots.py", (bx, y), self.font_s, TEXT_DIM)
+            return y + 34
+        card = pygame.Rect(bx, y, w, 116)
+        ui.card(self.screen, card, with_shadow=False)
+        box = pygame.Rect(card.x + 10, card.y + 10, 96, 96)
+        pygame.draw.rect(self.screen, PLAN_BG, box, border_radius=6)
+        k = (box.w / 2 - 6) / spec["r_circ"]
+        cx, cy = box.center
+        pts = [(cx + px * k, cy - py * k) for px, py in spec["footprint"]["points"]]
+        pygame.draw.circle(self.screen, BORDER, (cx, cy), int(spec["r_circ"] * k), 1)
+        pygame.draw.polygon(self.screen, SPAWN_COL, pts)
+        pygame.draw.polygon(self.screen, C0, pts, 1)
+        pygame.draw.line(self.screen, C0, (cx, cy), (cx + spec["r_insc"] * k * 0.85, cy), 2)
+        xs = [p[0] for p in spec["footprint"]["points"]]
+        ys = [p[1] for p in spec["footprint"]["points"]]
+        tx = box.right + 12
+        ui.text(self.screen, robots.label(spec["id"]), (tx, card.y + 10), self.f["body"], C0)
+        rows = ["%.2f x %.2f m" % (max(xs) - min(xs), max(ys) - min(ys)),
+                "height %.2f m" % spec["height"], "radius %.2f m" % spec["r_circ"],
+                spec.get("drive", "")]
+        for n, s in enumerate(rows):
+            ui.text(self.screen, s, (tx, card.y + 34 + n * 18), self.font_s, TEXT_DIM)
+        return y + card.h + 16
 
     def flip_door(self, mx, my):
         """Turn the door under the cursor 180 deg (it then swings into the other room)."""
@@ -646,7 +690,8 @@ class Editor:
             "door_default": self.door_default,
             "door_state": dict(self.door_state),
             "door_flip": dict(self.door_flip),
-            "robot": {"spawn": dict(self.robot["spawn"]) if self.robot.get("spawn") else None,
+            "robot": {"model": self.robot.get("model") or robots.DEFAULT_ROBOT,
+                      "spawn": dict(self.robot["spawn"]) if self.robot.get("spawn") else None,
                       "waypoints": [list(w) for w in self.robot.get("waypoints", [])]},
         }
 
@@ -662,7 +707,8 @@ class Editor:
         self.door_default = m.get("door_default") or DOOR_DEFAULT
         self.door_flip = dict(m.get("door_flip") or {})
         r = m.get("robot") or {}
-        self.robot = {"spawn": dict(r["spawn"]) if r.get("spawn") else None,
+        self.robot = {"model": r.get("model") or robots.DEFAULT_ROBOT,
+                      "spawn": dict(r["spawn"]) if r.get("spawn") else None,
                       "waypoints": [list(w) for w in r.get("waypoints") or []]}
         self.deselect()
         self.ctx_menu = None
@@ -957,6 +1003,11 @@ class Editor:
         elif key.startswith("et_"):
             self.edge_type = int(key[3:])
             self.msg = "Wall drag paints: %s" % EDGE_NAMES[self.edge_type]
+        elif key.startswith("rb_"):
+            self._snapshot()
+            self.robot["model"] = key[3:]
+            spec = robots.get(key[3:])
+            self.msg = "Robot: %s  (r %.2f m, h %.2f m)" % (spec["name"], spec["r_circ"], spec["height"])
         elif key.startswith("st_"):
             self.paint_style = key[3:]
             self.msg = "Style brush: %s" % STYLES[self.paint_style]["label"]
@@ -1327,6 +1378,9 @@ class Editor:
                               [("door_def", "Doors " + self.door_default + "	O / P")]))
         elif self.tool == "style":
             groups.insert(1, ("Room style", [("st_" + k, v["label"]) for k, v in STYLES.items()]))
+        elif self.tool == "robot" and robots.load_robots():
+            groups.insert(1, ("Robot model", [("rb_" + k, robots.label(k))
+                                              for k in robots.load_robots()]))
         return groups
 
     def draw_panel(self):
@@ -1358,7 +1412,7 @@ class Editor:
             col = 0                      # column of the next half-width button
             while i < len(defs):
                 key, label = defs[i]
-                small = key in HALF_KEYS or key[:3] in ("et_", "st_")
+                small = key in HALF_KEYS or key[:3] in ("et_", "st_", "rb_")
                 if small:
                     bw = (bw_full - 8) // 2
                     rect = pygame.Rect(bx + col * (bw + 8), y, bw, 32)
@@ -1377,6 +1431,8 @@ class Editor:
                 i += 1
             if col == 1:
                 y += 40
+            if title == "Robot model":
+                y = self.draw_robot_card(bx, y, bw_full)
             y += 14
 
         # transform inspector (only when a furniture is selected)
@@ -1539,7 +1595,8 @@ class Editor:
         tool_of = {"floor": "floor", "wall": "wall", "furni": "furniture", "style": "style",
                    "robot": "robot"}
         active = (tool_of.get(key) == self.tool or key == "et_%d" % self.edge_type
-                  or key == "st_" + self.paint_style)
+                  or key == "st_" + self.paint_style
+                  or key == "rb_" + (self.robot.get("model") or robots.DEFAULT_ROBOT))
         ui.button(self.screen, rect, label, self.f["button"], active=active and not danger,
                   hover=rect.collidepoint(mx, my), danger=danger,
                   align="center" if center else "left")

@@ -4,6 +4,7 @@ batch_generate_scenes.py - Generate many procedural maps (+ BEV + USD) in one go
     python tools/batch_generate_scenes.py --count 20                    # mixed themes
     python tools/batch_generate_scenes.py --count 10 --theme hospital --density 0.1 0.3
     python tools/batch_generate_scenes.py --count 5 --seed 100 --size 8 6 --no-usd
+    python tools/batch_generate_scenes.py --count 10 --robot turtlebot4      # paths sized for it
 
 Each map is deterministic in its seed:
     data/maps/generated/<prefix>_<seed>.json   map (editable in scene_editor.py)
@@ -24,6 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "src"))
 import map_generator as mg  # noqa: E402
 import bev_export as bev  # noqa: E402
 import scene_builder as sb  # noqa: E402
+import robots  # noqa: E402
 from config import MAPS_DIR, SCENES_DIR  # noqa: E402
 
 GEN_DIR = os.path.join(MAPS_DIR, "generated")
@@ -36,6 +38,8 @@ def parse_args():
     ap.add_argument("--theme", choices=mg.THEMES + ("mixed",), default="mixed")
     ap.add_argument("--size", nargs=2, type=int, metavar=("NX", "NY"), default=None)
     ap.add_argument("--density", nargs=2, type=float, metavar=("LO", "HI"), default=(0.12, 0.3))
+    ap.add_argument("--robot", default=None,
+                    help="robot model in data/robots (default %s)" % robots.DEFAULT_ROBOT)
     ap.add_argument("--prefix", default="gen")
     ap.add_argument("--out", default=GEN_DIR)
     ap.add_argument("--no-bev", action="store_true")
@@ -64,7 +68,7 @@ def main():
         dens = rng.uniform(*args.density)
         t0 = time.time()
         md = mg.generate_map(seed, theme, size=tuple(args.size) if args.size else None,
-                             density=dens, assets=assets)
+                             density=dens, assets=assets, robot=args.robot)
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(md, fh, indent=1)
         info = ""

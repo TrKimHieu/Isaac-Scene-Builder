@@ -26,9 +26,10 @@ from config import (CELL, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS, EDGE_OP
                     FURNITURE, EXTRA_FURNITURE)
 from utils import load_library, load_prop_shapes, bbox_corners
 import architecture as arch
+import robots
 
 RES = 0.1               # m / px of the planning grid
-ROBOT_R = 0.28          # robot radius kept free around obstacles (m)
+ROBOT_R = 0.28          # fallback radius kept free around obstacles when no robot model (m)
 WALL_CLEAR = 0.25       # gap between furniture and the wall line (m)
 DOOR_CLEAR = (1.2, 1.2)  # free box at each door: along the edge, into each side (m)
 MIN_REACH = 0.9         # an item may not cut off more than 10 % of the robot-free space
@@ -397,7 +398,8 @@ def _is_outer(e, owner):
 # Planning grid (walls, furniture, reachability)
 # ----------------------------------------------------------------------------
 class Grid:
-    def __init__(self, map_data, nx, ny):
+    def __init__(self, map_data, nx, ny, robot_r=ROBOT_R):
+        self.robot_r = robot_r
         self.W, self.H = int(round(nx * CELL / RES)), int(round(ny * CELL / RES))
         floor = Image.new("L", (self.W, self.H), 0)
         d = ImageDraw.Draw(floor)
@@ -447,7 +449,7 @@ class Grid:
                           .filter(ImageFilter.MaxFilter(3))) > 0
         occ = ~self.free | self.walls | furn
         img = Image.fromarray(np.where(occ, 255, 0).astype("uint8"))
-        k = 2 * int(math.ceil(ROBOT_R / RES)) + 1
+        k = 2 * int(math.ceil(self.robot_r / RES)) + 1
         img = img.filter(ImageFilter.MaxFilter(k))
         free = Image.fromarray(np.where(np.asarray(img) > 0, 0, 255).astype("uint8")).copy()
         sx, sy = self.px(*self.keypoints[0])
@@ -462,7 +464,7 @@ class Grid:
     def reach_mask(self):
         occ = ~self.free | self.walls | self.furn
         img = Image.fromarray(np.where(occ, 255, 0).astype("uint8"))
-        img = img.filter(ImageFilter.MaxFilter(2 * int(math.ceil(ROBOT_R / RES)) + 1))
+        img = img.filter(ImageFilter.MaxFilter(2 * int(math.ceil(self.robot_r / RES)) + 1))
         free = Image.fromarray(np.where(np.asarray(img) > 0, 0, 255).astype("uint8")).copy()
         if self.keypoints:
             ImageDraw.floodfill(free, self.px(*self.keypoints[0]), 128)
@@ -669,8 +671,11 @@ class Furnisher:
 # ----------------------------------------------------------------------------
 # Main entry
 # ----------------------------------------------------------------------------
-def generate_map(seed, theme=None, size=None, density=None, assets=None):
+def generate_map(seed, theme=None, size=None, density=None, assets=None, robot=None):
+    """robot: robot model id (data/robots); paths are kept wide enough for its footprint."""
     rng = random.Random(seed)
+    spec = robots.get(robot)
+    robot_r = robots.plan_radius(spec) if spec else ROBOT_R
     theme = theme or rng.choice(THEMES)
     if size:
         nx, ny = size
@@ -721,7 +726,7 @@ def generate_map(seed, theme=None, size=None, density=None, assets=None):
             md["door_flip"] = {arch.edge_key(*entrance): True}
 
     # planning grid + door clearances + keypoints (spawn first)
-    g = Grid(md, nx, ny)
+    g = Grid(md, nx, ny, robot_r)
     for e, (mx, my), n in door_frames(edges):
         tx, ty = (-n[1], n[0])
         a, b = DOOR_CLEAR[0] / 2, DOOR_CLEAR[1]
@@ -794,7 +799,8 @@ def generate_map(seed, theme=None, size=None, density=None, assets=None):
     if entrance:
         _, (mx, my), _n = [f for f in door_frames(edges) if f[0] == entrance][0]
         yaw = math.degrees(math.atan2(spawn[1] - my, spawn[0] - mx))
-    md["robot"] = {"spawn": {"x": round(spawn[0], 2), "y": round(spawn[1], 2),
+    md["robot"] = {"model": spec["id"] if spec else robots.DEFAULT_ROBOT,
+                   "spawn": {"x": round(spawn[0], 2), "y": round(spawn[1], 2),
                              "yaw": round(yaw, 1)}, "waypoints": tour}
     return md
 
@@ -866,7 +872,8 @@ def map_metrics(md):
     floor_m2 = floor_cells * CELL * CELL
     furn = md.get("furniture", [])
     foot = sum(float(f.get("w", 0.6)) * float(f.get("h", 0.6)) for f in furn)
-    g = Grid(md, nx, ny)
+    spec = robots.get(robots.model_of(md))
+    g = Grid(md, nx, ny, robots.plan_radius(spec) if spec else ROBOT_R)
     for f in furn:
         w, h = float(f.get("w", 0.6)), float(f.get("h", 0.6))
         g.furn |= g.poly_mask(bbox_corners(float(f["x"]), float(f["y"]), w, h,
@@ -880,6 +887,7 @@ def map_metrics(md):
     edges = arch.edges(md)
     return {
         "theme": (md.get("generator") or {}).get("theme", ""),
+        "robot": robots.model_of(md),
         "grid": "%dx%d" % (nx, ny), "rooms": len(md.get("rooms") or []),
         "floor_m2": round(floor_m2, 1), "items": len(furn),
         "footprint_m2": round(foot, 2), "density": round(foot / floor_m2, 4) if floor_m2 else 0.0,

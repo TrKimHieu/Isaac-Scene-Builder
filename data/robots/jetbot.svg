@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="235" height="235" viewBox="0 0 235.3 235.3">
+  <title>NVIDIA JetBot footprint (jetbot) - 0.134 x 0.162 m, r_circ 0.102 m</title>
+  <circle cx="117.6" cy="117.6" r="102.3" fill="none" stroke="#c9bfae" stroke-dasharray="6 6" stroke-width="2"/>
+  <polygon points="26.6,164.3 92.6,166.3 82.6,170.3 84.6,184.3 150.6,184.3 150.6,168.3 122.6,166.3 162.6,166.3 164.6,142.3 168.6,142.3 168.6,132.3 178.6,130.3 178.6,124.3 186.6,126.3 188.6,112.3 178.6,110.3 176.6,104.3 170.6,104.3 166.6,100.3 168.6,94.3 164.6,94.3 164.6,72.3 162.6,68.3 150.6,68.3 150.6,50.3 84.6,50.3 84.6,68.3 28.6,68.3" fill="#4e6a8a" stroke="#1c1f24" stroke-width="3"/>
+  <line x1="117.6" y1="117.6" x2="159.3" y2="117.6" stroke="#f3f0e9" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="117.6" cy="117.6" r="7" fill="#a6814a"/>
+</svg>

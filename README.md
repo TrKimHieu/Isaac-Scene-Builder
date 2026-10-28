@@ -106,7 +106,8 @@ python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
   glass fronts for meeting rooms; per-room style and lights.
 - Furniture by room type (desk + chair, table + chairs, bed + nightstand, rack rows with
   aisles, ...) from the measured footprints; every item must keep all doors and >= 90 % of
-  the free space reachable for a 0.28 m robot. Spawn at the entrance, one waypoint per room.
+  the free space reachable for the chosen robot (`--robot`, footprint radius + 5 cm). Spawn at
+  the entrance, one waypoint per room.
 - Output per map: `data/maps/generated/gen_XXXX.json` (editable), BEV + height occupancy +
   Nav2 files, `.usd` with colliders / semantics; `index.csv` + density report & histogram.
 
@@ -115,7 +116,14 @@ python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
   furniture mesh; `UsdSemantics` class labels (`floor`, `wall`, `door`, `window`, `glass_wall`,
   `ceiling`, furniture category such as `table`, `seating`, `medical`) for Replicator
   segmentation / bounding boxes; robot spawn + waypoints as `/World/Robot` markers.
-- **Robot tool (5):** click = waypoint, Shift+click = spawn, wheel = heading, right-click = remove.
+- **Robot tool (5):** pick the robot model, click = waypoint, Shift+click = spawn, wheel =
+  heading, right-click = remove. The footprint is drawn to scale at the spawn.
+- **Robot models** (`data/robots/<id>.json` + `.svg`, `python tools/import_robots.py`):
+  TurtleBot3 Burger / Waffle Pi / TurtleBot 4 / 4 Lite from the navsim presets; JetAuto Pro and
+  JetBot outlines traced from their own meshes (`JetRobots/assets/.../jetauto_pro.usd`,
+  `jetbot.usd`; navsim only has a centred box for JetAuto). The model sets the generator's path
+  width, the Nav2 `footprint` (convex hull) / `robot_radius` in `<stem>_nav.yaml` and the outline
+  under `/World/Robot/Spawn` in the USD.
 - **Height occupancy:** `python tools/slice_footprints.py [--z 0.05 0.50]` cuts every prop's real
   mesh at robot-body height; BEV export then also writes `<stem>_occ_<z0>-<z1>.pgm/.yaml`
   (a low robot drives under table tops; glass-top tables block only at their legs).

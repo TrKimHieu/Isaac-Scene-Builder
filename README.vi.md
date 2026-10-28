@@ -104,8 +104,8 @@ python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
   sảnh lớn + dãy văn phòng (kho); cửa theo cây khung nối các phòng, cửa chính, cửa sổ, vách kính
   cho phòng họp; style và đèn theo phòng.
 - Nội thất theo loại phòng (bàn + ghế, bàn họp + ghế, giường + tủ đầu giường, dãy kệ có lối đi,
-  ...) dùng footprint đã đo; mỗi món phải giữ mọi cửa và ≥ 90 % vùng trống tới được với robot bán
-  kính 0,28 m. Điểm xuất phát ở cửa chính, mỗi phòng một waypoint.
+  ...) dùng footprint đã đo; mỗi món phải giữ mọi cửa và ≥ 90 % vùng trống tới được với robot đã
+  chọn (`--robot`, bán kính footprint + 5 cm). Điểm xuất phát ở cửa chính, mỗi phòng một waypoint.
 - Mỗi map: `data/maps/generated/gen_XXXX.json` (mở được bằng editor), BEV + occupancy theo độ cao +
   file Nav2, `.usd` có collider / semantic; `index.csv` + báo cáo mật độ và histogram.
 
@@ -114,8 +114,15 @@ python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
   nhãn `UsdSemantics` theo class (`floor`, `wall`, `door`, `window`, `glass_wall`, `ceiling`,
   loại nội thất như `table`, `seating`, `medical`) cho segmentation / bounding box của
   Replicator; điểm xuất phát + waypoint của robot là các marker `/World/Robot`.
-- **Công cụ Robot (5):** click = waypoint, Shift+click = điểm xuất phát, lăn chuột = hướng,
-  chuột phải = xoá.
+- **Công cụ Robot (5):** chọn mẫu robot, click = waypoint, Shift+click = điểm xuất phát, lăn
+  chuột = hướng, chuột phải = xoá. Footprint được vẽ đúng tỉ lệ tại điểm xuất phát.
+- **Mẫu robot** (`data/robots/<id>.json` + `.svg`, `python tools/import_robots.py`): JetAuto Pro
+  và JetBot lấy đường viền từ chính mesh của chúng (`JetRobots/assets/.../jetauto_pro.usd`,
+  `jetbot.usd`; navsim chỉ có hình hộp đặt giữa cho JetAuto); TurtleBot3 Burger / Waffle Pi /
+  TurtleBot 4 / 4 Lite lấy từ preset navsim. Mẫu robot quyết định độ rộng lối đi khi sinh map,
+  `footprint` (bao lồi) /
+  `robot_radius` Nav2 trong `<stem>_nav.yaml` và đường viền footprint dưới `/World/Robot/Spawn`
+  trong USD.
 - **Occupancy theo độ cao:** `python tools/slice_footprints.py [--z 0.05 0.50]` cắt mesh thật của
   từng prop ở độ cao thân robot; xuất BEV sẽ có thêm `<stem>_occ_<z0>-<z1>.pgm/.yaml` (robot thấp
   chui qua gầm bàn; bàn kính chỉ chặn ở chân). Cánh cửa mở là vật cản trên cả hai bản đồ.
