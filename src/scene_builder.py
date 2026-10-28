@@ -29,13 +29,14 @@ if pxr_available():   # installed pxr, or Isaac Sim's bundled OpenUSD (no Kit st
 else:                 # editor / BEV / shape tools work without OpenUSD; writing .usd needs it
     Usd = UsdGeom = UsdLux = UsdShade = UsdPhysics = UsdSemantics = Gf = Sdf = None
 
-from config import (PROJECT_ROOT, PROP_DIRS, PROPS_REL, CELL, WALL_H,
+from config import (PROJECT_ROOT, PROP_DIRS, PROPS_REL, CELL, KIT_M, WALL_H,
                     FLOOR, CEILING, WALL, WALL_DOOR, LIGHT_MESH, REQUIRED,
                     STRUCTURE_CHOICES, FURNITURE, FURNITURE_CATEGORIES,
                     LIBRARY_CATEGORY_TABS, SCENES_DIR, STYLES, LIBRARY_DIR,
                     LIGHT_RADIUS, LIGHT_INTENSITY, LIGHT_COLOR,
                     LIGHT_EXPOSURE, LIGHT_CONE_ANGLE, LIGHT_CONE_SOFTNESS)
 from utils import safe_name, load_prop_shapes, load_library, ikey
+import map_format
 import robots
 
 
@@ -288,6 +289,8 @@ def _tile_align(name):
 # Dat prim
 # ----------------------------------------------------------------------------
 def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0, base_dir=None):
+    # scale: a number, or (sx, sy, sz) in the prop's own frame (wall pieces shortened
+    # along their length)
     """Xform holding the transform, with /Geo referencing the prop.
 
     base_dir: directory the Scene file will be saved in (asset paths are made relative to
@@ -302,9 +305,11 @@ def place(stage, path, asset_name, translate, rot_z=0.0, scale=1.0, base_dir=Non
         xf.AddRotateZOp().Set(float(rot_z))
     if asset_up_axis(asset_name) == "Y":
         xf.AddRotateXOp(opSuffix="upAxis").Set(90.0)
-    eff = float(scale) * asset_mpu(asset_name)
-    if abs(eff - 1.0) > 1e-9:
-        xf.AddScaleOp().Set(Gf.Vec3f(eff, eff, eff))
+    mpu = asset_mpu(asset_name)
+    s = scale if isinstance(scale, (tuple, list)) else (scale, scale, scale)
+    eff = [float(v) * mpu for v in s]
+    if any(abs(v - 1.0) > 1e-9 for v in eff):
+        xf.AddScaleOp().Set(Gf.Vec3f(*eff))
     geo = stage.DefinePrim(path + "/Geo")
     geo.GetReferences().AddReference(asset_path(asset_name, base_dir or _stage_dir(stage)))
     return xf
@@ -338,6 +343,117 @@ def _style_material(stage, looks, style, slot, base_dir):
     mat.CreateSurfaceOutput("mdl").ConnectToSource(out)
     looks[key] = mat
     return mat
+
+
+_KIT_MAT = {}
+
+
+def _kit_material(stage, looks, asset, base_dir):
+    """The material the kit tile `asset` is bound to, referenced into /World/Looks (so a
+    floor mesh looks exactly like SM_Floor_3m); None if it cannot be found."""
+    key = ("kit", asset)
+    if key in looks:
+        return looks[key]
+    mat = None
+    p = asset_abs(asset)
+    if p:
+        if p not in _KIT_MAT:
+            src = None
+            try:
+                st = Usd.Stage.Open(p)
+                for pr in st.Traverse():
+                    if pr.IsA(UsdGeom.Mesh):
+                        m, _rel = UsdShade.MaterialBindingAPI(pr).ComputeBoundMaterial()
+                        if m:
+                            src = str(m.GetPath())
+                            break
+            except Exception:
+                src = None
+            _KIT_MAT[p] = src
+        if _KIT_MAT[p]:
+            path = "/World/Looks/Kit_%s" % safe_name(asset)
+            prim = stage.DefinePrim(path, "Material")
+            prim.GetReferences().AddReference(asset_path(asset, base_dir), _KIT_MAT[p])
+            mat = UsdShade.Material(prim)
+    looks[key] = mat
+    return mat
+
+
+def add_tile_mesh(stage, path, cells, z, down=False):
+    """One mesh over floor cells at height z, UVs like the 3 m kit tiles (st = xy / 3 m), so
+    the kit / style materials keep their real scale on the 1 m grid. down: faces -Z
+    (ceiling)."""
+    pts, idx, uvs, index = [], [], [], {}
+
+    def vid(i, j):
+        if (i, j) not in index:
+            index[(i, j)] = len(pts)
+            x, y = i * CELL, j * CELL
+            pts.append(Gf.Vec3f(x, y, z))
+            uvs.append(Gf.Vec2f(x / KIT_M, y / KIT_M))
+        return index[(i, j)]
+    for i, j in cells:
+        quad = [vid(i, j), vid(i + 1, j), vid(i + 1, j + 1), vid(i, j + 1)]
+        idx.extend(reversed(quad) if down else quad)
+    mesh = UsdGeom.Mesh.Define(stage, path)
+    mesh.CreatePointsAttr(pts)
+    mesh.CreateFaceVertexCountsAttr([4] * len(cells))
+    mesh.CreateFaceVertexIndicesAttr(idx)
+    mesh.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
+    mesh.CreateNormalsAttr([Gf.Vec3f(0, 0, -1.0 if down else 1.0)] * len(pts))
+    mesh.SetNormalsInterpolation(UsdGeom.Tokens.vertex)
+    UsdGeom.PrimvarsAPI(mesh).CreatePrimvar(
+        "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.vertex).Set(uvs)
+    return mesh
+
+
+PANEL_FACE = 0.100        # SM_Wall_3m: face plane, local +X from the wall line (m)
+PANEL_BASE = (0.112, 0.06)  # its baseboard: front plane and height (m)
+
+
+def add_wall_panel(stage, path, pos, yaw, length, z0, z1):
+    """A wall face like SM_Wall_3m (face + baseboard when it starts at the floor) of any
+    length, local +Y along the wall, facing local +X; UVs in kit units (u = y / 3 m,
+    v = z / 3 m) so the wall / style texture keeps its scale next to real kit panels."""
+    xf = UsdGeom.Xform.Define(stage, path)
+    xf.AddTranslateOp().Set(Gf.Vec3d(*pos))
+    if yaw:
+        xf.AddRotateZOp().Set(float(yaw))
+    fx, (bx, bh) = PANEL_FACE, PANEL_BASE
+    L = float(length)
+    zb = max(z0, bh) if z0 < bh else z0
+    quads = [[(fx, L, z1), (fx, 0, z1), (fx, 0, zb), (fx, L, zb)]]          # main face
+    if z0 < bh:                                                               # baseboard
+        quads.append([(bx, L, bh), (bx, 0, bh), (bx, 0, z0), (bx, L, z0)])
+        quads.append([(fx, L, bh), (fx, 0, bh), (bx, 0, bh), (bx, L, bh)])  # its top
+    pts, uvs = [], []
+    for q in quads:
+        for x, y, z in q:
+            pts.append(Gf.Vec3f(x, y, z))
+            uvs.append(Gf.Vec2f(y / KIT_M, z / KIT_M))
+    mesh = UsdGeom.Mesh.Define(stage, path + "/Geo")
+    mesh.CreatePointsAttr(pts)
+    mesh.CreateFaceVertexCountsAttr([4] * len(quads))
+    mesh.CreateFaceVertexIndicesAttr(list(range(len(pts))))
+    mesh.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
+    UsdGeom.PrimvarsAPI(mesh).CreatePrimvar(
+        "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.vertex).Set(uvs)
+    return xf, mesh
+
+
+def add_quad_mesh(stage, path, quad, z, down=True):
+    """A flat 4-corner mesh at height z (the soffit under an opening's lintel)."""
+    pts = [Gf.Vec3f(float(x), float(y), z) for x, y in quad]
+    mesh = UsdGeom.Mesh.Define(stage, path)
+    mesh.CreatePointsAttr(pts)
+    mesh.CreateFaceVertexCountsAttr([4])
+    mesh.CreateFaceVertexIndicesAttr([3, 2, 1, 0] if down else [0, 1, 2, 3])
+    mesh.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
+    mesh.CreateDoubleSidedAttr(True)
+    UsdGeom.PrimvarsAPI(mesh).CreatePrimvar(
+        "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.vertex).Set(
+        [Gf.Vec2f(p[0] / KIT_M, p[1] / KIT_M) for p in pts])
+    return mesh
 
 
 def add_light(stage, base_path, cx, cy, light_mesh=None, base_dir=None):
@@ -480,6 +596,7 @@ def build_scene(map_data, out_path, physics=True, semantics=True):
         raise RuntimeError("OpenUSD (pxr) is not available: install Isaac Sim (C:\\isaacsim "
                            "or $ISAACSIM) or usd-core to build .usd scenes")
     import architecture as arch
+    map_data = map_format.ensure(map_data)            # legacy 3 m maps -> 1 m grid
     struct = dict(map_data.get("structure") or {})
     light_p = struct.get("light", LIGHT_MESH)
     missing = [n for n in arch.required_assets(map_data) if not asset_exists(n)]
@@ -509,10 +626,28 @@ def build_scene(map_data, out_path, physics=True, semantics=True):
     # Shell: floors, ceilings, wall panels, caps, doors, windows, glass
     for it in arch.plan_structure(map_data):
         parent = "/World/Doors/" if it["kind"] == "door" else "/World/Structure/"
-        xf = place(stage, parent + it["name"], it["asset"], it["pos"], rot_z=it["yaw"],
-                   base_dir=out_dir)
-        geo = stage.GetPrimAtPath(xf.GetPath().AppendChild("Geo"))
-        mat = _style_material(stage, looks, it["style"], it["slot"], out_dir)
+        if it.get("cells"):                       # floor / ceiling: one mesh per style
+            geo = add_tile_mesh(stage, parent + it["name"], it["cells"], it["pos"][2],
+                                down=it["kind"] == "ceiling").GetPrim()
+            xf = UsdGeom.Xformable(geo)
+            mat = (_style_material(stage, looks, it["style"], it["slot"], out_dir)
+                   or _kit_material(stage, looks, it["asset"], out_dir))
+        elif it.get("panel"):                     # wall face shorter than a kit panel
+            L, z0, z1 = it["panel"]
+            xf, mesh = add_wall_panel(stage, parent + it["name"], it["pos"], it["yaw"], L, z0, z1)
+            geo = mesh.GetPrim()
+            mat = (_style_material(stage, looks, it["style"], it["slot"], out_dir)
+                   or _kit_material(stage, looks, it["asset"], out_dir))
+        elif it.get("quad"):                      # soffit under an opening's lintel
+            geo = add_quad_mesh(stage, parent + it["name"], it["quad"], it["pos"][2]).GetPrim()
+            xf = UsdGeom.Xformable(geo)
+            mat = (_style_material(stage, looks, it["style"], it["slot"], out_dir)
+                   or _kit_material(stage, looks, it["asset"], out_dir))
+        else:
+            xf = place(stage, parent + it["name"], it["asset"], it["pos"], rot_z=it["yaw"],
+                       scale=it.get("scale", 1.0), base_dir=out_dir)
+            geo = stage.GetPrimAtPath(xf.GetPath().AppendChild("Geo"))
+            mat = _style_material(stage, looks, it["style"], it["slot"], out_dir)
         if mat is not None:
             UsdShade.MaterialBindingAPI.Apply(geo).Bind(
                 mat, UsdShade.Tokens.strongerThanDescendants)
@@ -525,9 +660,12 @@ def build_scene(map_data, out_path, physics=True, semantics=True):
         if k in stats:
             stats[k] += 1
         if it["style"] and it["slot"] == "floor":
-            stats["styles"][it["style"]] = stats["styles"].get(it["style"], 0) + 1
+            stats["styles"][it["style"]] = (stats["styles"].get(it["style"], 0)
+                                            + len(it.get("cells") or [1]))
+        if k in ("floor", "ceiling"):
+            stats[k] += len(it.get("cells") or [1]) - 1   # count cells, not meshes
     stats["door"] //= 3                                # frame + leaf + handle per door
-    stats["wall"] //= 2                                # two panels per wall edge
+    stats["wall"] //= 2                                # two panels per wall piece
     for i, j, cx, cy in arch.lights(map_data):
         add_light(stage, "/World/Lights/Lamp_%d_%d" % (i, j), cx, cy, light_p,
                   base_dir=out_dir)

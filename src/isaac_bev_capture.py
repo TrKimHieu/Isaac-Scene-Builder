@@ -26,7 +26,7 @@ Notes:
 import os
 import argparse
 
-from config import (PROP_DIRS, RENDER_DIR, CELL, RESOLUTION, CAM_HEIGHT,
+from config import (PROP_DIRS, RENDER_DIR, LEGACY_CELL as CELL, RESOLUTION, CAM_HEIGHT,
                     APERTURE_SCALE, VERTICAL_FLIP, SETTLE_FRAMES, SHOW_FRAMES,
                     CHUNK_SIZE, GROUND_SIZE, PROJECT_ROOT)
 from utils import safe_name as _safe_name, load_library

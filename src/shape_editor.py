@@ -23,7 +23,7 @@ import sys
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
-from config import (CELL, RENDER_DIR, COLOR_DIR, C0, MESH_MARK, BG, PANEL_BG, TEXT, TEXT_DIM,
+from config import (LEGACY_CELL as CELL, RENDER_DIR, COLOR_DIR, C0, MESH_MARK, BG, PANEL_BG, TEXT, TEXT_DIM,
                     BTN, BTN_HOVER, BTN_ACTIVE, ACCENT, GRID_LINE, SECTION_LINE, BORDER, PLAN_BG)
 import ui_kit as ui
 import bev_export as bev

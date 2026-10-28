@@ -4,13 +4,19 @@ scene_editor.py - Grid GUI (pygame) to design a map -> generate sceneX.usd + BEV
 Usage:
     python src/scene_editor.py
 
-3 tools:
+Grid: 1 m cells (stronger lines every 3 m = one Office kit module); legacy 3 m maps are
+converted on load (map_format.py).
+
+Tools:
   FLOOR (1) - Click near a CELL CENTER: empty -> floor -> floor+light -> empty.
               DRAG to fill a rectangular floor area. Right-click removes a cell.
-  WALL  (2) - Click near a CELL EDGE: cycles none -> wall -> door -> window -> glass ->
-              opening. DRAG along a row/column paints the EDGE TYPE chosen in the panel.
-              O over a door toggles it open/closed, P flips its swing side.
-              Right-click clears an edge.
+  WALL  (2) - Click / DRAG along a row or column paints the EDGE TYPE chosen in the panel
+              (wall / door / window / glass / opening); clicking an edge of that type again
+              clears it, clicking a door selects it. Right-click clears an edge.
+              Doors: the plan shows the leaf + swing arc (red = it runs into a wall); new
+              doors are fitted automatically. On a door (or the selected one): O open /
+              closed, P swing side (which room), H hinge side (which jamb), A auto-fit.
+              The DOOR panel shows a zoomed plan of the selected door with these controls.
   STYLE (4) - Paint a room style (office / hospital / warehouse / home) on floor cells:
               click or DRAG a rectangle; pick the style in the panel. Walls take the style
               of the room each face looks into.
@@ -19,8 +25,15 @@ Usage:
               Click = add a waypoint, Shift+click = robot spawn, wheel = spawn heading,
               right-click = remove the nearest waypoint / spawn. Exported with the BEV as
               <stem>_nav.yaml + follow_waypoints.py (ROS 2 Nav2) and as USD markers.
-  FURNITURE (3) - Pick a prop in the palette, click empty space to place (auto-selected).
+  FURNITURE (3) - Pick a prop in the LIBRARY (thumbnail cards of the top-down captures);
+              a preview under the cursor shows where it lands (green = free, red = no room).
+              Click empty space to place (auto-selected).
               Click a placed prop to SELECT it; HOLD left + drag to MOVE it.
+              PLACEMENT: grid 50 / 25 / 10 / 5 cm or free (G), Wall magnet (M) slides props
+              flush against walls / other props within 25 cm, No overlap (K) keeps props off
+              walls, doorways, door leaves and each other (overlaps are outlined in red).
+              Alt while moving = free position, arrows nudge one grid step (Shift x5),
+              Del deletes, Ctrl+D duplicates.
               TRANSFORM panel: edit X/Y/Yaw and pick a SHAPE (BBox / Sphere / Mesh) -
               the chosen shape becomes the default for new props. Right-click opens a
               menu (Select / Duplicate / Rotate 90 / Delete). Wheel = rotate 5 deg/notch.
@@ -47,13 +60,16 @@ import pygame
 import scene_builder as sb
 import bev_export as bev
 
-from config import (PROJECT_ROOT, MAPS_DIR, CELL, SNAP as _SNAP, FURNITURE_CATEGORIES,
+from config import (PROJECT_ROOT, MAPS_DIR, CELL, KIT_M, DOOR_GAP, SNAP as _SNAP,
+                    FURNITURE_CATEGORIES,
                     EDGE_NAMES, EDGE_CYCLE, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS,
                     EDGE_OPENING, STYLES, DEFAULT_STYLE, STYLE_COLORS, DOOR_DEFAULT,
                     WINDOW_COL, GLASS_COL, ROBOT_COL, SPAWN_COL, PLAN_BG, BORDER, ON_ACTIVE)
 import ui_kit as ui
 import architecture as arch
 import robots
+import placement as pl
+import map_format
 from config import (C0, C1, C2, C3, C4, MESH_MARK, BG, GRID_LINE, FLOOR_COL,
                     FLOOR_HOVER, LIGHT_COL, WALL_COL, DOOR_COL, HOVER_EDGE,
                     PANEL_BG, BTN, BTN_HOVER, BTN_ACTIVE, TEXT, TEXT_DIM,
@@ -68,10 +84,34 @@ MIN_W, MIN_H = 900, 680
 PANEL_W = 360
 # panel buttons laid out two per row
 HALF_KEYS = ("gx-", "gx+", "gy-", "gy+", "undo", "redo", "walls", "clear", "usd", "export",
-             "savemap", "load")
+             "savemap", "load", "magnet", "overlap")
+SNAP_LABELS = {0.5: "50 cm", 0.25: "25", 0.1: "10", 0.05: "5", 0.0: "Free"}
+LIB_COLS = 3             # furniture library: cards per row
+THUMB = 64               # thumbnail size in a library card (px)
 PAD = 34
 STATUS_H = 52
+FOOTER_H = 100           # fixed command bar at the bottom of the panel
+TOOLS = [("floor", "Floor", "1"), ("wall", "Wall", "2"), ("furniture", "Props", "3"),
+         ("style", "Style", "4"), ("robot", "Robot", "5")]
+TOOL_HINTS = {
+    "floor": ["Click a cell: floor \u2192 floor + light \u2192 empty",
+              "Drag: fill a rectangle   \u00b7   Right-click: remove"],
+    "wall": ["Click / drag along a grid line: paint the type below",
+             "Click a door: select it   \u00b7   Right-click: erase",
+             "On a door: O open \u00b7 P swing \u00b7 H hinge \u00b7 A fit"],
+    "furniture": ["Click empty floor: place   \u00b7   Drag a prop: move",
+                  "Wheel / R: rotate   \u00b7   Right-click: menu",
+                  "V: colour view   \u00b7   Del: delete   \u00b7   Ctrl+D: duplicate"],
+    "style": ["Click / drag over floor cells: paint the room style",
+              "Each wall face takes the style of the room it faces"],
+    "robot": ["Click: waypoint   \u00b7   Shift+click: spawn",
+              "Wheel: spawn heading   \u00b7   Right-click: remove a point"],
+}
+EDGE_SWATCH = {EDGE_WALL: WALL_COL, EDGE_DOOR: DOOR_COL, EDGE_WINDOW: WINDOW_COL,
+               EDGE_GLASS: GLASS_COL, EDGE_OPENING: None}
+OK_COL = (63, 130, 98)
 EDGE_HIT = 0.24          # edge-snap threshold (cell fraction)
+MAJOR_LINE = (212, 204, 188)   # grid line every kit module (3 m)
 
 
 class Editor:
@@ -88,7 +128,7 @@ class Editor:
         self.font_b = self.f["title"]
         self.clock = pygame.time.Clock()
 
-        self.nx, self.ny = 10, 8
+        self.nx, self.ny = 30, 24    # 1 m cells
         self.cells = {}        # (i,j) -> 1|2
         self.vedges = {}       # (i,j) -> 1|2
         self.hedges = {}       # (i,j) -> 1|2
@@ -102,10 +142,25 @@ class Editor:
         self.door_state = {}   # "v:i,j" -> "open" | "closed" (unset = door_default)
         self.door_default = DOOR_DEFAULT
         self.door_flip = {}    # "v:i,j" -> True: door swings into the other room
+        self.door_hinge = {}   # "v:i,j" -> True: hinge on the other jamb
+        self.sel_door = None   # ("vedge"|"hedge", i, j) shown in the door inspector
+        self._door_key = None  # cache of door_issues()
+        self._door_bad = set()
         self.edge_type = EDGE_WALL          # what a wall-tool drag paints
         self.paint_style = "hospital"       # what the style tool paints
         self.robot = {"model": robots.DEFAULT_ROBOT}   # + "spawn": {x,y,yaw}, "waypoints"
         self.place_shape = "bbox"   # default shape when placing a new prop
+        self.snap_step = 0.1        # placement grid (m); 0 = free (Alt also frees a move)
+        self.wall_magnet = True     # M: slide props flush against walls / props nearby
+        self.no_overlap = True      # K: props may not overlap walls, doorways or each other
+        self._walls_key = None      # cache of placement.wall_obstacles()
+        self._walls = []
+        self._clash_key = None      # cache of the indices of overlapping props
+        self._clash = set()
+        self._ghost_key = None      # cache of the placement preview under the cursor
+        self._ghost = None
+        self._thumb_cache = {}      # (asset, size) -> Surface | None
+        self._drag_was_clear = True
         self.cur_yaw = 0.0
         self.msg = "Ready. FLOOR tool: click / drag to paint floor."
         self.buttons = []       # (rect, key, label)
@@ -204,7 +259,7 @@ class Editor:
     def _recalc_layout(self):
         area_w = self.win_w - PANEL_W - 2 * PAD
         area_h = self.win_h - 2 * PAD - STATUS_H
-        self.base_cs = max(14, int(min(area_w / self.nx, area_h / self.ny)))
+        self.base_cs = max(6, int(min(area_w / self.nx, area_h / self.ny)))
         self._apply_view()
 
     def _apply_view(self):
@@ -321,21 +376,6 @@ class Editor:
         else:
             self.cells[(i, j)] = s
 
-    def cycle_edge(self, kind, i, j):
-        d = self.vedges if kind == "vedge" else self.hedges
-        maxi = self.nx if kind == "vedge" else self.nx - 1
-        maxj = self.ny - 1 if kind == "vedge" else self.ny
-        if not (0 <= i <= maxi and 0 <= j <= maxj):
-            return
-        self._snapshot()
-        cur = d.get((i, j), 0)
-        s = EDGE_CYCLE[(EDGE_CYCLE.index(cur) + 1) % len(EDGE_CYCLE)] if cur in EDGE_CYCLE else 0
-        if s == 0:
-            d.pop((i, j), None)
-        else:
-            d[(i, j)] = s
-        self.msg = "Edge: %s" % EDGE_NAMES.get(s, "none")
-
     def erase_cell(self, i, j):
         if (i, j) in self.cells:
             self._snapshot()
@@ -367,6 +407,7 @@ class Editor:
         end = self.nearest_edge(mx, my)
         d = self.vedges if kind == "vedge" else self.hedges
         n = 0
+        i1 = j1 = None
         if kind == "vedge":
             # fixed column i0, run along j
             j1 = end[2] if end[0] == "vedge" else j0
@@ -384,6 +425,13 @@ class Editor:
                     d[(i, j0)] = self.edge_type
                     n += 1
         self.msg = "%s: %d segments." % (EDGE_NAMES[self.edge_type], n)
+        if self.edge_type == EDGE_DOOR and n:
+            run = ([("vedge", i0, j) for j in range(min(j0, j1), max(j0, j1) + 1)]
+                   if kind == "vedge" else
+                   [("hedge", i, j0) for i in range(min(i0, i1), max(i0, i1) + 1)])
+            for door in run:
+                self.fit_door(door)
+            self.sel_door = run[-1]
 
     def paint_style_rect(self, i0, j0, i1, j1):
         """Paint self.paint_style on every floor cell in the box."""
@@ -480,31 +528,111 @@ class Editor:
             ui.text(self.screen, s, (tx, card.y + 34 + n * 18), self.font_s, TEXT_DIM)
         return y + card.h + 16
 
-    def flip_door(self, mx, my):
-        """Turn the door under the cursor 180 deg (it then swings into the other room)."""
-        kind, i, j = self.nearest_edge(mx, my)
-        d = self.vedges if kind == "vedge" else self.hedges
-        if d.get((i, j)) != EDGE_DOOR:
-            self.msg = "No door here."
-            return
-        self._snapshot()
-        key = arch.edge_key(kind, i, j)
-        if self.door_flip.pop(key, None) is None:
-            self.door_flip[key] = True
-        self.msg = "Door swing flipped."
+    # ---- doors: swing side, hinge side, open / closed, auto-fit ----
+    def _door_target(self, mx=None, my=None):
+        """The door under the cursor (wall tool), else the selected door; None if neither."""
+        if mx is not None and self.in_grid(mx, my):
+            kind, i, j = self.nearest_edge(mx, my)
+            d = self.vedges if kind == "vedge" else self.hedges
+            if d.get((i, j)) == EDGE_DOOR:
+                return (kind, i, j)
+        if self.sel_door:
+            kind, i, j = self.sel_door
+            d = self.vedges if kind == "vedge" else self.hedges
+            if d.get((i, j)) == EDGE_DOOR:
+                return self.sel_door
+        return None
 
-    def toggle_door(self, mx, my):
-        """Open <-> closed for the door edge under the cursor."""
-        kind, i, j = self.nearest_edge(mx, my)
+    def _door_op(self, op, mx=None, my=None):
+        door = self._door_target(mx, my)
+        if door is None:
+            self.msg = "No door here - point at a door or select one."
+            return
+        kind, i, j = door
+        key = arch.edge_key(kind, i, j)
+        self._snapshot()
+        if op == "open":
+            is_open = arch.door_is_open(self.map_data_light(), kind[0], i, j)
+            self.door_state[key] = "closed" if is_open else "open"
+            self.msg = "Door %s." % self.door_state[key]
+        elif op == "swing":
+            if self.door_flip.pop(key, None) is None:
+                self.door_flip[key] = True
+            self.msg = "Door now swings into the other room."
+        elif op == "hinge":
+            if self.door_hinge.pop(key, None) is None:
+                self.door_hinge[key] = True
+            self.msg = "Hinge moved to the other jamb."
+        elif op == "fit":
+            if not self.fit_door(door, keep_room=False):
+                self._undo_stack.pop()
+                return
+        self.sel_door = door
+        if op != "fit" and door in self.door_issues():
+            self.msg += "  The leaf hits a wall - try A (auto-fit)."
+
+    def fit_door(self, door, keep_room=True):
+        """Pick swing side + hinge so the open leaf clears the walls (keeps the current
+        room first). True if the door is clear afterwards."""
+        kind, i, j = door
+        key = arch.edge_key(kind, i, j)
+        best = arch.best_door_setup(self.edge_map(), kind[0], i, j)
+        if best is None:
+            self.msg = "Every way this door opens hits a wall - close it or move it."
+            return False
+        flip, mir = best
+        before = (bool(self.door_flip.get(key)), bool(self.door_hinge.get(key)))
+        self.door_flip.pop(key, None)
+        self.door_hinge.pop(key, None)
+        if flip:
+            self.door_flip[key] = True
+        if mir:
+            self.door_hinge[key] = True
+        what = (["hinge moved to the other jamb"] if mir != before[1] else []) + \
+            (["now swings into the other room"] if flip != before[0] else [])
+        self.msg = ("Door fitted: %s." % ", ".join(what)) if what else "Door swing is clear."
+        return True
+
+    def door_issues(self):
+        """Doors whose open leaf runs into a wall (drawn red), cached."""
+        key = (self._walls_key, tuple(sorted(self.door_flip.items())),
+               tuple(sorted(self.door_hinge.items())), tuple(sorted(self.door_state.items())),
+               self.door_default)
+        if key != self._door_key:
+            md = self.edge_map()
+            walls = pl.wall_obstacles(dict(md, door_state={}, door_default="closed"))
+            bad = set()
+            for kind, d in (("vedge", self.vedges), ("hedge", self.hedges)):
+                for (i, j), t in d.items():
+                    if t == EDGE_DOOR and arch.door_is_open(md, kind[0], i, j) and \
+                            arch.door_swing_blocked(md, kind[0], i, j, walls):
+                        bad.add((kind, i, j))
+            self._door_key, self._door_bad = key, bad
+        return self._door_bad
+
+    def click_edge(self, kind, i, j):
+        """Wall tool click: paint the chosen type; clicking a door selects it, clicking an
+        edge of the chosen type again clears it."""
         d = self.vedges if kind == "vedge" else self.hedges
-        if d.get((i, j)) != EDGE_DOOR:
-            self.msg = "No door here."
+        maxi = self.nx if kind == "vedge" else self.nx - 1
+        maxj = self.ny - 1 if kind == "vedge" else self.ny
+        if not (0 <= i <= maxi and 0 <= j <= maxj):
+            return
+        cur = d.get((i, j), 0)
+        if cur == EDGE_DOOR and self.edge_type == EDGE_DOOR:
+            self.sel_door = (kind, i, j)
+            self.msg = "Door selected - O open / P swing / H hinge / A auto-fit."
             return
         self._snapshot()
-        key = arch.edge_key(kind, i, j)
-        is_open = arch.door_is_open(self.map_data_light(), kind[0], i, j)
-        self.door_state[key] = "closed" if is_open else "open"
-        self.msg = "Door %s" % self.door_state[key]
+        if cur == self.edge_type:
+            d.pop((i, j), None)
+            self.msg = "%s removed." % EDGE_NAMES[cur]
+            return
+        d[(i, j)] = self.edge_type
+        self.msg = "%s." % EDGE_NAMES[self.edge_type]
+        if self.edge_type == EDGE_DOOR:
+            self.sel_door = (kind, i, j)
+            self.fit_door(self.sel_door)
 
     def auto_walls(self):
         ve, he = sb.boundary_edges(self.cells)
@@ -519,20 +647,79 @@ class Editor:
                 added += 1
         self.msg = "Auto-walls: added %d boundary segments." % added
 
-    def place_furniture(self, mx, my):
-        if not self.palette:
-            self.msg = "No furniture prop available."
-            return
-        self._snapshot()
-        x, y = self.screen_to_usd(mx, my)
-        x = round(x / SNAP) * SNAP
-        y = round(y / SNAP) * SNAP
+    # ---- placement (grid snap, wall magnet, no overlap: placement.py) ----
+    def walls(self):
+        """Wall / doorway / door-leaf rectangles, rebuilt when the edges change."""
+        key = (tuple(sorted(self.vedges.items())), tuple(sorted(self.hedges.items())),
+               self.door_default, tuple(sorted(self.door_state.items())),
+               tuple(sorted(self.door_flip.items())), tuple(sorted(self.door_hinge.items())))
+        if key != self._walls_key:
+            self._walls_key, self._walls = key, pl.wall_obstacles(self.edge_map())
+        return self._walls
+
+    def edge_map(self):
+        """The edges + door settings as map data (what architecture's door / wall
+        functions read)."""
+        return {"cell": CELL, "grid": [self.nx, self.ny], "cells": {}, "furniture": [],
+                "vedges": {"%d,%d" % k: v for k, v in self.vedges.items()},
+                "hedges": {"%d,%d" % k: v for k, v in self.hedges.items()},
+                "door_default": self.door_default, "door_state": self.door_state,
+                "door_flip": self.door_flip, "door_hinge": self.door_hinge}
+
+    def other_polys(self, skip=None):
+        return [pl.footprint(f) for k, f in enumerate(self.furniture) if k != skip]
+
+    def settle(self, f, x, y, skip=None):
+        """(x, y, ok, what) for prop `f` dropped at (x, y); Alt = free position (no grid,
+        no magnet). The floor limit applies once the plan has floor cells."""
+        free = bool(pygame.key.get_mods() & pygame.KMOD_ALT)
+        return pl.settle(f, x, y, self.walls(), self.other_polys(skip),
+                         step=0.0 if free else self.snap_step,
+                         use_magnet=self.wall_magnet and not free, no_overlap=self.no_overlap,
+                         floor=self.cells if (self.no_overlap and self.cells) else None)
+
+    def clashes(self):
+        """Indices of props overlapping a wall, a doorway or another prop (drawn in red)."""
+        key = (self._walls_key, repr(self.furniture))
+        if key != self._clash_key:
+            walls = self.walls()
+            polys = self.other_polys()
+            bad = set()
+            for k, poly in enumerate(polys):
+                if pl.collides(poly, walls, polys[k + 1:]):
+                    bad.add(k)
+                    for m, o in enumerate(polys[k + 1:], k + 1):
+                        if pl.collides(poly, [], [o]):
+                            bad.add(m)
+            self._clash_key, self._clash = key, bad
+        return self._clash
+
+    def _gap_text(self, f):
+        g = pl.wall_gap(f, self.walls())
+        return "" if g is None or g > 1.5 else "   ·   wall gap %.2f m" % g
+
+    def new_prop(self):
         name = self.palette[self.pal_sel][0]
         sh = bev.default_shape(name)   # measured w/h/r; shape from current placement mode
-        self.furniture.append({"asset": name, "x": x, "y": y, "yaw": self.cur_yaw,
-                               "shape": self.place_shape,
-                               "w": sh["w"], "h": sh["h"], "r": sh["r"]})
-        self.msg = "Placed %s (%s) @ (%.1f, %.1f)" % (name, self.place_shape, x, y)
+        return {"asset": name, "x": 0.0, "y": 0.0, "yaw": self.cur_yaw, "shape": self.place_shape,
+                "w": sh["w"], "h": sh["h"], "r": sh["r"]}
+
+    def place_furniture(self, mx, my):
+        """Place the palette prop at the cursor; False if there is no free spot there."""
+        if not self.palette:
+            self.msg = "No furniture prop available."
+            return False
+        f = self.new_prop()
+        x, y, ok, what = self.settle(f, *self.screen_to_usd(mx, my))
+        if not ok:
+            self.msg = "No room for %s here (walls / doorway / props). K allows overlap." % f["asset"]
+            return False
+        self._snapshot()
+        f["x"], f["y"] = round(x, 4), round(y, 4)
+        self.furniture.append(f)
+        self.msg = "Placed %s @ (%.2f, %.2f)%s%s" % (
+            f["asset"], x, y, "  ·  flush to " + what if what else "", self._gap_text(f))
+        return True
 
     def remove_nearest_furniture(self, mx, my):
         if not self.furniture:
@@ -552,13 +739,13 @@ class Editor:
         if not self.furniture:
             return None
         x, y = self.screen_to_usd(mx, my)
-        rad_map = dict(self.palette)
-        best_idx, best_d = None, 1e9
+        pad = 4.0 / self.cs * sb.CELL            # a few pixels of slack around small props
+        best_idx, best_a = None, 1e9
         for idx, f in enumerate(self.furniture):
-            d2 = (f["x"] - x) ** 2 + (f["y"] - y) ** 2
-            rad = rad_map.get(f["asset"], 0.4) * 1.3
-            if d2 <= rad * rad and d2 < best_d:
-                best_d, best_idx = d2, idx
+            if pl.contains(pl.footprint(f), x, y, pad):
+                x0, y0, x1, y1 = pl.aabb(pl.footprint(f))
+                if (x1 - x0) * (y1 - y0) < best_a:     # the smallest prop under the cursor
+                    best_a, best_idx = (x1 - x0) * (y1 - y0), idx
         return best_idx
 
     def select_furniture(self, idx):
@@ -590,7 +777,8 @@ class Editor:
         self._snapshot()
         src = self.furniture[idx]
         clone = dict(src)
-        clone["x"] = src["x"] + SNAP
+        x, y, ok, _ = self.settle(clone, src["x"] + 0.5, src["y"])
+        clone["x"], clone["y"] = round(x, 4), round(y, 4)
         self.furniture.append(clone)
         self.select_furniture(len(self.furniture) - 1)
         self.msg = "Duplicated %s" % clone["asset"]
@@ -598,8 +786,34 @@ class Editor:
     def rotate_furniture(self, idx, delta):
         self._snapshot()
         f = self.furniture[idx]
+        old = dict(f)
         f["yaw"] = (f["yaw"] + delta) % 360
-        self.msg = "Xoay %s -> %d deg" % (f["asset"], int(f["yaw"]))
+        if self.wall_magnet or (self.no_overlap and pl.collides(pl.footprint(f), self.walls(),
+                                                                self.other_polys(idx))):
+            x, y, ok, _ = self.settle(f, f["x"], f["y"], skip=idx)   # stays flush when turned
+            if not ok:                       # no free spot nearby: keep the old pose
+                f.update(old)
+                self._undo_stack.pop()
+                self.msg = "No room to turn %s here." % f["asset"]
+                return
+            f["x"], f["y"] = round(x, 4), round(y, 4)
+        self.msg = "Rotated %s -> %d deg%s" % (f["asset"], int(f["yaw"]), self._gap_text(f))
+
+    def nudge_selected(self, dx, dy):
+        """Arrow keys: move the selected prop by one grid step (Shift x5), blocked by walls."""
+        f = self.furniture[self.selected]
+        step = self.snap_step or 0.01
+        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+            step *= 5
+        g = dict(f, x=round(f["x"] + dx * step, 4), y=round(f["y"] + dy * step, 4))
+        if self.no_overlap and pl.collides(pl.footprint(g), self.walls(),
+                                           self.other_polys(self.selected),
+                                           self.cells or None):
+            self.msg = "Blocked - %s would overlap.%s" % (f["asset"], self._gap_text(f))
+            return
+        self._snapshot()
+        f["x"], f["y"] = g["x"], g["y"]
+        self.msg = "%s @ (%.2f, %.2f)%s" % (f["asset"], f["x"], f["y"], self._gap_text(f))
 
     def delete_furniture(self, idx):
         self._snapshot()
@@ -663,7 +877,7 @@ class Editor:
         if self.selected is None:
             return
         self._snapshot()
-        step = 15.0 if name == "yaw" else SNAP
+        step = 15.0 if name == "yaw" else (self.snap_step or 0.01)
         f = self.furniture[self.selected]
         v = f.get(name, 0.0) + (step if sign > 0 else -step)
         f[name] = self._clamp_field(name, v)
@@ -680,6 +894,7 @@ class Editor:
     # ---- data model io ----
     def map_data(self):
         return {
+            "cell": CELL,
             "grid": [self.nx, self.ny],
             "cells": {"%d,%d" % k: v for k, v in self.cells.items()},
             "vedges": {"%d,%d" % k: v for k, v in self.vedges.items()},
@@ -690,12 +905,14 @@ class Editor:
             "door_default": self.door_default,
             "door_state": dict(self.door_state),
             "door_flip": dict(self.door_flip),
+            "door_hinge": dict(self.door_hinge),
             "robot": {"model": self.robot.get("model") or robots.DEFAULT_ROBOT,
                       "spawn": dict(self.robot["spawn"]) if self.robot.get("spawn") else None,
                       "waypoints": [list(w) for w in self.robot.get("waypoints", [])]},
         }
 
     def load_map_data(self, m):
+        m = map_format.ensure(m)              # legacy 3 m maps open on the 1 m grid
         self.nx, self.ny = m["grid"]
         self.cells = sb._ikey(m.get("cells"))
         self.vedges = sb._ikey(m.get("vedges"))
@@ -706,6 +923,8 @@ class Editor:
         self.door_state = dict(m.get("door_state") or {})
         self.door_default = m.get("door_default") or DOOR_DEFAULT
         self.door_flip = dict(m.get("door_flip") or {})
+        self.door_hinge = dict(m.get("door_hinge") or {})
+        self.sel_door = None
         r = m.get("robot") or {}
         self.robot = {"model": r.get("model") or robots.DEFAULT_ROBOT,
                       "spawn": dict(r["spawn"]) if r.get("spawn") else None,
@@ -833,8 +1052,9 @@ class Editor:
         self.msg = "Cleared the whole map."
 
     def resize_grid(self, dnx, dny):
-        self.nx = max(2, min(40, self.nx + dnx))
-        self.ny = max(2, min(40, self.ny + dny))
+        step = max(1, int(round(KIT_M / CELL)))      # grow / shrink by one 3 m module
+        self.nx = max(2, min(120, self.nx + dnx * step))
+        self.ny = max(2, min(120, self.ny + dny * step))
         # drop elements outside the grid
         self.cells = {k: v for k, v in self.cells.items() if 0 <= k[0] < self.nx and 0 <= k[1] < self.ny}
         self.vedges = {k: v for k, v in self.vedges.items() if 0 <= k[0] <= self.nx and 0 <= k[1] < self.ny}
@@ -872,17 +1092,18 @@ class Editor:
                     self.select_furniture(idx)
                     self._snapshot()                    # snapshot before dragging
                     self.move_drag = idx          # hold left + drag -> move
-                else:
-                    self.place_furniture(mx, my)
+                    self._drag_was_clear = idx not in self.clashes()
+                elif self.place_furniture(mx, my):
                     self.select_furniture(len(self.furniture) - 1)
                     self.move_drag = self.selected
+                    self._drag_was_clear = True
             elif button == 3:
                 self.open_ctx_menu(mx, my)
             return
         # FLOOR / WALL: left starts a drag; right clears a single cell/edge
         if self.tool == "robot":
             x, y = self.screen_to_usd(mx, my)
-            x, y = round(x / SNAP) * SNAP, round(y / SNAP) * SNAP
+            x, y = pl.snap(x, self.snap_step or 0.01), pl.snap(y, self.snap_step or 0.01)
             if button == 1:
                 self._snapshot()
                 if pygame.key.get_mods() & pygame.KMOD_SHIFT:
@@ -918,11 +1139,14 @@ class Editor:
             self._apply_view()
             return
         if self.move_drag is not None and 0 <= self.move_drag < len(self.furniture):
-            x, y = self.screen_to_usd(mx, my)
             f = self.furniture[self.move_drag]
-            f["x"] = round(x / SNAP) * SNAP
-            f["y"] = round(y / SNAP) * SNAP
-            self.msg = "Moving %s @ (%.1f, %.1f)" % (f["asset"], f["x"], f["y"])
+            x, y, ok, what = self.settle(f, *self.screen_to_usd(mx, my), skip=self.move_drag)
+            if ok or not self._drag_was_clear:      # an overlapping prop may be dragged out
+                f["x"], f["y"] = round(x, 4), round(y, 4)
+                self._drag_was_clear = self._drag_was_clear or ok
+            self.msg = "Moving %s @ (%.2f, %.2f)%s%s" % (
+                f["asset"], f["x"], f["y"], "  ·  flush to " + what if (ok and what) else "",
+                self._gap_text(f))
             return
         if self.drag_start is not None:
             self.drag_cur = (mx, my)
@@ -955,11 +1179,18 @@ class Editor:
             _, kind, i0, j0 = start
             end = self.nearest_edge(mx, my)
             if end == (kind, i0, j0):
-                self.cycle_edge(kind, i0, j0)
+                self.click_edge(kind, i0, j0)
             else:
                 self.draw_wall_run((kind, i0, j0), mx, my)
 
     def panel_click(self, mx, my, button):
+        for rect, key, _ in getattr(self, "footer_buttons", []):
+            if rect.collidepoint(mx, my):
+                self.commit_active_field()
+                self.do_action(key)
+                return
+        if my >= getattr(self, "_panel_view_h", self.win_h):
+            return                                # the bar between the content and status
         # field in the Transform panel
         if self.selected is not None and self.tool == "furniture":
             for name, rect in self.field_rects.items():
@@ -987,12 +1218,26 @@ class Editor:
                     self._pal_filter = ""
                     return
         # search field click
-        if hasattr(self, '_pal_search_rect') and self._pal_search_rect.collidepoint(mx, my):
+        if self._pal_search_rect is not None and self._pal_search_rect.collidepoint(mx, my):
             self._pal_search_active = True
             return
         else:
             if getattr(self, '_pal_search_active', False):
                 self._pal_search_active = False
+
+    def toggle_magnet(self):
+        self.wall_magnet = not self.wall_magnet
+        self.msg = "Wall magnet %s" % ("on: props snap flush to walls / props" if self.wall_magnet else "off")
+
+    def toggle_overlap(self):
+        self.no_overlap = not self.no_overlap
+        self.msg = "No overlap %s" % ("on: walls, doorways and props block" if self.no_overlap
+                                       else "off: props may overlap (shown in red)")
+
+    def cycle_snap(self):
+        steps = list(pl.SNAP_STEPS)
+        k = steps.index(self.snap_step) if self.snap_step in steps else 0
+        self.do_action("snap_%g" % steps[(k + 1) % len(steps)])
 
     def do_action(self, key):
         if key == "floor": self.switch_tool("floor")
@@ -1003,6 +1248,13 @@ class Editor:
         elif key.startswith("et_"):
             self.edge_type = int(key[3:])
             self.msg = "Wall drag paints: %s" % EDGE_NAMES[self.edge_type]
+        elif key.startswith("snap_"):
+            self.snap_step = float(key[5:])
+            self.msg = "Placement grid: %s" % ("free" if not self.snap_step else "%g cm" % (self.snap_step * 100))
+        elif key == "magnet":
+            self.toggle_magnet()
+        elif key == "overlap":
+            self.toggle_overlap()
         elif key.startswith("rb_"):
             self._snapshot()
             self.robot["model"] = key[3:]
@@ -1011,6 +1263,13 @@ class Editor:
         elif key.startswith("st_"):
             self.paint_style = key[3:]
             self.msg = "Style brush: %s" % STYLES[self.paint_style]["label"]
+        elif key in ("door_open", "door_swing", "door_hinge", "door_fit"):
+            self._door_op({"door_open": "open", "door_swing": "swing", "door_hinge": "hinge",
+                           "door_fit": "fit"}[key])
+        elif key == "route_clear":
+            self._snapshot()
+            self.robot["waypoints"] = []
+            self.msg = "Route cleared."
         elif key == "door_def":
             self._snapshot()
             self.door_default = "closed" if self.door_default == "open" else "open"
@@ -1076,14 +1335,29 @@ class Editor:
         elif k == pygame.K_4: self.switch_tool("style")
         elif k == pygame.K_5: self.switch_tool("robot")
         elif k == pygame.K_o and self.tool == "wall":
-            self.toggle_door(*pygame.mouse.get_pos())
+            self._door_op("open", *pygame.mouse.get_pos())
         elif k == pygame.K_p and self.tool == "wall":
-            self.flip_door(*pygame.mouse.get_pos())
+            self._door_op("swing", *pygame.mouse.get_pos())
+        elif k == pygame.K_h and self.tool == "wall":
+            self._door_op("hinge", *pygame.mouse.get_pos())
+        elif k == pygame.K_a and self.tool == "wall":
+            self._door_op("fit", *pygame.mouse.get_pos())
         elif k == pygame.K_2: self.switch_tool("wall")
         elif k in (pygame.K_3, pygame.K_f): self.switch_tool("furniture")
         elif k == pygame.K_TAB:
             order = ["floor", "wall", "furniture"]
             self.switch_tool(order[(order.index(self.tool) + 1) % 3])
+        elif k in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN) and \
+                self.tool == "furniture" and self.selected is not None:
+            self.nudge_selected(*{pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0),
+                                  pygame.K_UP: (0, -1), pygame.K_DOWN: (0, 1)}[k])
+        elif k == pygame.K_g: self.cycle_snap()
+        elif k == pygame.K_m: self.toggle_magnet()
+        elif k == pygame.K_k: self.toggle_overlap()
+        elif k == pygame.K_DELETE and self.tool == "furniture" and self.selected is not None:
+            self.delete_furniture(self.selected)
+        elif k == pygame.K_d and (mods & pygame.KMOD_CTRL) and self.selected is not None:
+            self.duplicate_furniture(self.selected)
         elif k == pygame.K_w: self.auto_walls()
         elif k == pygame.K_c: self.clear()
         elif k == pygame.K_s and (mods & pygame.KMOD_CTRL): self.save_map()
@@ -1158,7 +1432,7 @@ class Editor:
             r = self.cell_rect(i, j)
             pygame.draw.rect(self.screen, STYLE_COLORS.get(self.styles.get((i, j)), FLOOR_COL), r)
             if s == 2:                          # ceiling light: small champagne dot + ring
-                rad = max(3, int(self.cs) // 11)
+                rad = max(2, int(0.12 / CELL * self.cs))
                 pygame.draw.circle(self.screen, LIGHT_COL, r.center, rad)
                 pygame.draw.circle(self.screen, LIGHT_COL, r.center, rad + 4, 1)
         # hover cell
@@ -1169,12 +1443,20 @@ class Editor:
         # drag preview
         self.draw_drag_preview()
         # grid lines
+        major = max(1, int(round(KIT_M / CELL)))     # every 3 m (kit module) a stronger line
+        fine = self.cs >= 9                           # 1 m lines only when they do not crowd
         for i in range(self.nx + 1):
+            if i % major and not fine:
+                continue
             x = self.ox + i * self.cs
-            pygame.draw.line(self.screen, GRID_LINE, (x, self.oy), (x, self.oy + self.ny * self.cs))
+            pygame.draw.line(self.screen, GRID_LINE if i % major else MAJOR_LINE,
+                             (x, self.oy), (x, self.oy + self.ny * self.cs))
         for j in range(self.ny + 1):
+            if j % major and not fine:
+                continue
             y = self.oy + j * self.cs
-            pygame.draw.line(self.screen, GRID_LINE, (self.ox, y), (self.ox + self.nx * self.cs, y))
+            pygame.draw.line(self.screen, GRID_LINE if j % major else MAJOR_LINE,
+                             (self.ox, y), (self.ox + self.nx * self.cs, y))
         # edges
         for (i, j), s in self.vedges.items():
             self.draw_edge("vedge", i, j, s)
@@ -1183,10 +1465,53 @@ class Editor:
         # hover edge
         if hover and hover[0] in ("vedge", "hedge"):
             self.draw_edge(hover[0], hover[1], hover[2], -1)
-        # furniture
+        # furniture (overlapping ones get a red outline)
+        clash = self.clashes() if self.furniture else set()
         for idx, f in enumerate(self.furniture):
             self.draw_furni(f, selected=(idx == self.selected))
+            if idx in clash:
+                pts = [self.usd_to_screen(x, y) for x, y in pl.footprint(f)]
+                pygame.draw.polygon(self.screen, DANGER, pts, 2)
+        self.draw_ghost(mx, my, in_grid)
         self.draw_robot()
+
+    def draw_ghost(self, mx, my, in_grid):
+        """Where the palette prop would land under the cursor: its footprint (green = free,
+        red = no room) plus its colored top-down image."""
+        if (self.tool != "furniture" or not in_grid or self.move_drag is not None
+                or self.ctx_menu is not None or not self.palette
+                or self.find_furniture_at(mx, my) is not None):
+            return
+        alt = bool(pygame.key.get_mods() & pygame.KMOD_ALT)
+        key = (mx, my, self.pal_sel, self.cur_yaw, self.place_shape, self.snap_step,
+               self.wall_magnet, self.no_overlap, alt, self._walls_key, len(self.furniture),
+               self.zoom, self.pan_x, self.pan_y)
+        if key != self._ghost_key:
+            f = self.new_prop()
+            x, y, ok, what = self.settle(f, *self.screen_to_usd(mx, my))
+            f["x"], f["y"] = x, y
+            self._ghost_key, self._ghost = key, (f, ok, what)
+        f, ok, what = self._ghost
+        col = SPAWN_COL if ok else DANGER
+        pts = [self.usd_to_screen(x, y) for x, y in pl.footprint(f)]
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        box = pygame.Rect(min(xs) - 2, min(ys) - 2, max(xs) - min(xs) + 4, max(ys) - min(ys) + 4)
+        layer = pygame.Surface(box.size, pygame.SRCALPHA)
+        local = [(x - box.x, y - box.y) for x, y in pts]
+        pygame.draw.polygon(layer, col + (46,), local)
+        mesh = self._get_mesh_surface(f["asset"], color=True)
+        if mesh is not None and f.get("shape") != "sphere":
+            surf, w_m, h_m = mesh
+            img = pygame.transform.smoothscale(surf, (max(2, int(w_m / sb.CELL * self.cs)),
+                                                      max(2, int(h_m / sb.CELL * self.cs))))
+            img = pygame.transform.rotate(img, -f.get("yaw", 0.0))
+            img.set_alpha(150)
+            sx, sy = self.usd_to_screen(f["x"], f["y"])
+            layer.blit(img, img.get_rect(center=(sx - box.x, sy - box.y)))
+        self.screen.blit(layer, box.topleft)
+        pygame.draw.polygon(self.screen, col, pts, 2)
+        if what and ok:                               # flush: mark the touching side
+            ui.text(self.screen, "flush to " + what, (box.right + 6, box.y - 2), self.f["caption"], col)
 
     def draw_drag_preview(self):
         if self.drag_start is None or self.drag_cur is None:
@@ -1213,7 +1538,7 @@ class Editor:
                     self.draw_edge("hedge", i, j0, -1)
 
     def draw_edge(self, kind, i, j, s):
-        w = max(3, int(self.cs) // 11)
+        w = max(3, int(round(0.224 / CELL * self.cs)))       # the real 22 cm wall
         if kind == "vedge":
             x = self.ox + i * self.cs
             p0 = (x, self.oy + j * self.cs)
@@ -1225,23 +1550,15 @@ class Editor:
         if s == -1:  # hover
             pygame.draw.line(self.screen, HOVER_EDGE, p0, p1, w)
             return
-        a = (p0[0] * 0.65 + p1[0] * 0.35, p0[1] * 0.65 + p1[1] * 0.35)
-        b = (p0[0] * 0.35 + p1[0] * 0.65, p0[1] * 0.35 + p1[1] * 0.65)
+        f0, f1 = DOOR_GAP
+        a = (p0[0] + (p1[0] - p0[0]) * f0, p0[1] + (p1[1] - p0[1]) * f0)
+        b = (p0[0] + (p1[0] - p0[0]) * f1, p0[1] + (p1[1] - p0[1]) * f1)
         if s in (EDGE_DOOR, EDGE_OPENING):
             # door / opening: gap in the middle (0.94 m clear)
             pygame.draw.line(self.screen, WALL_COL, p0, a, w)
             pygame.draw.line(self.screen, WALL_COL, b, p1, w)
             if s == EDGE_DOOR:
-                if arch.door_is_open(self.map_data_light(), kind[0], i, j):
-                    # leaf swung open from the hinge into the +X (vedge) / -Y (hedge) room
-                    n = (1, 0) if kind == "vedge" else (0, -1)
-                    if arch.door_flipped(self.map_data_light(), kind[0], i, j):
-                        n, b = (-n[0], -n[1]), a      # turned 180: other room, other jamb
-                    L = 0.94 / sb.CELL * self.cs
-                    pygame.draw.line(self.screen, DOOR_COL, b,
-                                     (b[0] + n[0] * L, b[1] + n[1] * L), max(2, w // 2))
-                else:
-                    pygame.draw.line(self.screen, DOOR_COL, a, b, max(2, w // 2))
+                self.draw_door_symbol(kind, i, j, w, a, b)
         elif s == EDGE_WINDOW:
             pygame.draw.line(self.screen, WALL_COL, p0, p1, w)
             pygame.draw.line(self.screen, WINDOW_COL, p0, p1, max(2, w // 2))
@@ -1250,10 +1567,33 @@ class Editor:
         else:
             pygame.draw.line(self.screen, WALL_COL, p0, p1, w)
 
+    def draw_door_symbol(self, kind, i, j, w, a, b):
+        """Plan symbol: open leaf from its hinge + the swing arc (red when it hits a wall),
+        or a line across the gap when closed; the selected door gets a gold ring."""
+        md = self.map_data_light()
+        bad = (kind, i, j) in self.door_issues()
+        col = DANGER if bad else DOOR_COL
+        if arch.door_is_open(md, kind[0], i, j):
+            hinge, tip = arch.leaf_segment(md, kind[0], i, j)
+            arc = [self.usd_to_screen(*arch.leaf_segment(md, kind[0], i, j, angle=ang)[1])
+                   for ang in range(0, int(arch.DOOR_OPEN_DEG) + 1, 10)]
+            if len(arc) > 1:
+                pygame.draw.lines(self.screen, col, False, arc, 1)
+            pygame.draw.line(self.screen, col, self.usd_to_screen(*hinge),
+                             self.usd_to_screen(*tip), max(2, w // 2))
+            hx, hy = self.usd_to_screen(*hinge)
+            pygame.draw.circle(self.screen, col, (int(hx), int(hy)), max(2, w // 2))
+        else:
+            pygame.draw.line(self.screen, col, a, b, max(2, w // 2))
+        if self.sel_door == (kind, i, j) and self.tool == "wall":
+            m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+            pygame.draw.circle(self.screen, ACCENT, (int(m[0]), int(m[1])),
+                               max(8, int(0.62 / CELL * self.cs)), 2)
+
     def map_data_light(self):
         """Just what architecture.door_is_open() needs (cheap, called per drawn door)."""
         return {"door_default": self.door_default, "door_state": self.door_state,
-                "door_flip": self.door_flip}
+                "door_flip": self.door_flip, "door_hinge": self.door_hinge}
 
     def _get_mesh_surface(self, asset, color=False):
         """Footprint surface from mesh_shapes/<asset>.png (cached).
@@ -1361,29 +1701,24 @@ class Editor:
         ex, ey = sx + math.cos(math.radians(yaw)) * wpx / 2, sy + math.sin(math.radians(yaw)) * hpx / 2
         pygame.draw.line(self.screen, ACCENT if selected else PLAN_BG, (sx, sy), (ex, ey), 2)
 
-    def _btn_groups(self):
-        groups = [
-            ("Tools", [("floor", "Floor	1"), ("wall", "Wall	2"), ("furni", "Furniture	3"),
-                       ("style", "Style	4"), ("robot", "Robot	5")]),
-            ("Edit", [("undo", "Undo	Ctrl+Z"), ("redo", "Redo	Ctrl+Y")]),
-            ("Grid", [("walls", "Auto-walls	W"), ("clear", "Clear	C"),
-                      ("gx-", "Width  −"), ("gx+", "Width  +"),
-                      ("gy-", "Depth  −"), ("gy+", "Depth  +")]),
-            ("File", [("usd", "Save USD	S"), ("export", "Export BEV	B"),
-                     ("savemap", "Save map	Ctrl+S"), ("load", "Load map	L")]),
-        ]
-        if self.tool == "wall":
-            groups.insert(1, ("Edge type", [("et_%d" % e, EDGE_NAMES[e])
-                                                   for e in EDGE_CYCLE if e] +
-                              [("door_def", "Doors " + self.door_default + "	O / P")]))
-        elif self.tool == "style":
-            groups.insert(1, ("Room style", [("st_" + k, v["label"]) for k, v in STYLES.items()]))
-        elif self.tool == "robot" and robots.load_robots():
-            groups.insert(1, ("Robot model", [("rb_" + k, robots.label(k))
-                                              for k in robots.load_robots()]))
-        return groups
+    def _section(self, title, bx, y, right=None):
+        ui.tracked(self.screen, title, (bx, y), self.f["caption"])
+        if right:
+            w = self.f["caption"].size(right)[0]
+            ui.text(self.screen, right, (bx + PANEL_W - 40 - w, y), self.f["caption"], TEXT_DIM)
+        return y + 22
+
+    def _half_buttons(self, defs, bx, y, bw_full, mx, my, h=32):
+        """Buttons two per row: defs = [(key, label), ...]."""
+        bw = (bw_full - 8) // 2
+        for k, (key, label) in enumerate(defs):
+            rect = pygame.Rect(bx + (k % 2) * (bw + 8), y + (k // 2) * (h + 8), bw, h)
+            self._draw_button(rect, key, label, mx, my)
+        return y + ((len(defs) + 1) // 2) * (h + 8)
 
     def draw_panel(self):
+        """Header -> tool tabs -> what the tool does -> the tool's own controls -> map size;
+        undo / save / export sit in a fixed bar at the bottom."""
         px = self.win_w - PANEL_W
         pygame.draw.rect(self.screen, PANEL_BG, (px, 0, PANEL_W, self.win_h))
         pygame.draw.line(self.screen, BORDER, (px, 0), (px, self.win_h))
@@ -1392,65 +1727,369 @@ class Editor:
         bw_full = PANEL_W - 40
         self.buttons = []
         self._pal_rects = []
+        self._pal_cat_rects = []
+        self._pal_search_rect = None
 
-        avail_h = self.win_h - STATUS_H
+        avail_h = self.win_h - STATUS_H - FOOTER_H
+        self._panel_view_h = avail_h
         # clamp before drawing (use previous frame limit) to avoid jitter on resize
         self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
-        # clip the panel area (excluding status bar) so scrolled content stays inside
+        # clip the panel area (above the command bar) so scrolled content stays inside
         self.screen.set_clip(pygame.Rect(px + 1, 0, PANEL_W - 1, avail_h))
-        y = 22 - self.panel_scroll
+        y = 20 - self.panel_scroll
 
         ui.text(self.screen, "Scene Editor", (bx, y), self.f["title"], C0)
         y += 26
-        ui.text(self.screen, "Isaac Scene Builder", (bx, y), self.f["subtitle"], TEXT_DIM)
-        y += 30
+        name = self.current_map_name or "Untitled map"
+        ui.text(self.screen, "%s   \u00b7   %g \u00d7 %g m" % (name, self.nx * CELL, self.ny * CELL),
+                (bx, y), self.f["subtitle"], TEXT_DIM)
+        y += 28
 
-        for title, defs in self._btn_groups():
-            ui.tracked(self.screen, title, (bx, y), self.f["caption"])
-            y += 22
-            i = 0
-            col = 0                      # column of the next half-width button
-            while i < len(defs):
-                key, label = defs[i]
-                small = key in HALF_KEYS or key[:3] in ("et_", "st_", "rb_")
-                if small:
-                    bw = (bw_full - 8) // 2
-                    rect = pygame.Rect(bx + col * (bw + 8), y, bw, 32)
-                    self._draw_button(rect, key, label, mx, my)
-                    if col == 1:
-                        y += 40
-                    col = 1 - col
-                    i += 1
-                    continue
-                if col == 1:                 # finish a half-filled row first
-                    y += 40
-                    col = 0
-                rect = pygame.Rect(bx, y, bw_full, 34)
-                self._draw_button(rect, key, label, mx, my)
-                y += 42
-                i += 1
-            if col == 1:
-                y += 40
-            if title == "Robot model":
-                y = self.draw_robot_card(bx, y, bw_full)
-            y += 14
+        y = self.draw_tool_tabs(bx, y, bw_full, mx, my)
+        y = self.draw_hint(bx, y, bw_full)
 
-        # transform inspector (only when a furniture is selected)
-        if self.selected is not None and self.tool == "furniture" and 0 <= self.selected < len(self.furniture):
-            if self._scroll_to_transform:
-                # bring the TRANSFORM block near the top of view (applied next frame)
-                tf_top_abs = y + self.panel_scroll
-                self.panel_scroll = max(0, tf_top_abs - 56)
+        if self.tool == "furniture":
+            # transform inspector (only when a furniture is selected)
+            if self.selected is not None and 0 <= self.selected < len(self.furniture):
+                if self._scroll_to_transform:
+                    # bring the TRANSFORM block near the top of view (applied next frame)
+                    tf_top_abs = y + self.panel_scroll
+                    self.panel_scroll = max(0, tf_top_abs - 56)
+                    self._scroll_to_transform = False
+                y = self.draw_transform_panel(px, y)
+            else:
+                self.field_rects = {}
                 self._scroll_to_transform = False
-            y = self.draw_transform_panel(px, y)
+            y = self.draw_placement(bx, y, bw_full, mx, my)
+            y = self.draw_library(px, bx, y, bw_full, mx, my, avail_h)
         else:
             self.field_rects = {}
             self._scroll_to_transform = False
+            if self.tool == "wall":
+                y = self.draw_wall_section(bx, y, bw_full, mx, my)
+            elif self.tool == "style":
+                y = self.draw_style_section(bx, y, bw_full, mx, my)
+            elif self.tool == "robot":
+                y = self.draw_robot_section(bx, y, bw_full, mx, my)
+            else:
+                y = self.draw_floor_section(bx, y, bw_full, mx, my)
+        y = self.draw_map_section(bx, y, bw_full, mx, my)
 
-        # palette (furniture list) - filtered by category + search
-        self._pal_cat_rects = []
-        ui.tracked(self.screen, "Furniture", (bx, y), self.f["caption"])
+        # scroll limits + reset clip
+        content_h = y + self.panel_scroll
+        self._panel_max_scroll = max(0, content_h - avail_h + 8)
+        self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
+        self.screen.set_clip(None)
+
+        # slim scrollbar (only when content overflows)
+        if self._panel_max_scroll > 0:
+            bar_h = max(30, int(avail_h * avail_h / float(content_h)))
+            bar_y = int((avail_h - bar_h) * self.panel_scroll / self._panel_max_scroll)
+            pygame.draw.rect(self.screen, BORDER, (self.win_w - 6, bar_y + 4, 3, bar_h - 8),
+                             border_radius=2)
+        self.draw_footer(px, bx, bw_full, mx, my)
+
+    def draw_tool_tabs(self, bx, y, bw_full, mx, my):
+        """Segmented control of the five tools (label + shortcut)."""
+        gap = 4
+        n = len(TOOLS)
+        w = (bw_full - gap * (n - 1)) // n
+        frame = pygame.Rect(bx - 4, y - 4, bw_full + 8, 56)
+        pygame.draw.rect(self.screen, BTN_HOVER, frame, border_radius=12)
+        for k, (tool, label, keyn) in enumerate(TOOLS):
+            rect = pygame.Rect(bx + k * (w + gap), y, w, 48)
+            on = self.tool == tool
+            hov = rect.collidepoint(mx, my)
+            if on:
+                ui.shadow(self.screen, rect, 9, spread=4)
+                pygame.draw.rect(self.screen, BTN_ACTIVE, rect, border_radius=9)
+            elif hov:
+                pygame.draw.rect(self.screen, PANEL_BG, rect, border_radius=9)
+            ui.text(self.screen, label, (rect.centerx, rect.y + 17), self.f["button"],
+                    ON_ACTIVE if on else TEXT, center=True)
+            ui.text(self.screen, keyn, (rect.centerx, rect.y + 35), self.f["caption"],
+                    ui.HINT_ON_ACTIVE if on else ui.HINT, center=True)
+            self.buttons.append((rect, {"furniture": "furni"}.get(tool, tool), label))
+        return y + 66
+
+    def draw_hint(self, bx, y, bw_full):
+        """What the mouse / keys do with the current tool."""
+        lines = TOOL_HINTS.get(self.tool, [])
+        if not lines:
+            return y
+        card = pygame.Rect(bx, y, bw_full, 14 + 19 * len(lines))
+        pygame.draw.rect(self.screen, ACCENT_DIM, card, border_radius=8)
+        pygame.draw.rect(self.screen, ACCENT, pygame.Rect(card.x, card.y + 6, 3, card.h - 12),
+                         border_radius=2)
+        for k, s in enumerate(lines):
+            ui.text(self.screen, self._fit_text(s, self.font_s, bw_full - 22),
+                    (card.x + 14, card.y + 7 + 19 * k), self.font_s, TEXT)
+        return card.bottom + 20
+
+    def _swatch_button(self, rect, key, label, col, mx, my, gap=False):
+        self._draw_button(rect, key, label, mx, my)
+        sx = rect.right - 34
+        sy = rect.centery
+        on = key == "et_%d" % self.edge_type or key == "st_" + self.paint_style
+        if gap:                                              # opening: wall | gap | wall
+            c = ON_ACTIVE if on else WALL_COL
+            pygame.draw.line(self.screen, c, (sx, sy), (sx + 8, sy), 4)
+            pygame.draw.line(self.screen, c, (sx + 16, sy), (sx + 24, sy), 4)
+        elif len(col) == 3 and key.startswith("et_"):
+            pygame.draw.line(self.screen, col, (sx, sy), (sx + 24, sy), 5)
+        else:
+            sw = pygame.Rect(sx, sy - 8, 22, 16)
+            pygame.draw.rect(self.screen, col, sw, border_radius=4)
+            pygame.draw.rect(self.screen, BORDER, sw, 1, border_radius=4)
+
+    def draw_wall_section(self, bx, y, bw_full, mx, my):
+        y = self._section("Paint", bx, y)
+        bw = (bw_full - 8) // 2
+        types = [e for e in EDGE_CYCLE if e]
+        for k, e in enumerate(types):
+            rect = pygame.Rect(bx + (k % 2) * (bw + 8), y + (k // 2) * 40, bw, 32)
+            self._swatch_button(rect, "et_%d" % e, EDGE_NAMES[e], EDGE_SWATCH[e] or WALL_COL,
+                                mx, my, gap=e == EDGE_OPENING)
+        y += ((len(types) + 1) // 2) * 40
+        rect = pygame.Rect(bx, y, bw_full, 32)
+        self._draw_button(rect, "door_def", "New doors: %s" % self.door_default + "\tclick to switch",
+                          mx, my)
+        y += 52
+        door = self._door_target()
+        if door is not None:
+            y = self.draw_door_card(door, bx, y, bw_full, mx, my)
+        else:
+            ui.text(self.screen, "Click a door on the plan to edit its hinge and swing.",
+                    (bx, y), self.font_s, TEXT_DIM)
+            y += 36
+        return y
+
+    def draw_door_card(self, door, bx, y, bw_full, mx, my):
+        """Door inspector: a zoomed plan of the door with its swing, and its controls."""
+        kind, i, j = door
+        md = self.edge_map()
+        y = self._section("Door", bx, y, "%s %d,%d" % ("vertical" if kind == "vedge" else
+                                                        "horizontal", i, j))
+        box = pygame.Rect(bx, y, bw_full, 150)
+        ui.card(self.screen, box, fill=PLAN_BG, with_shadow=False)
+        mid, _dyaw, _h, _l = arch.door_pose(md, kind[0], i, j)
+        k = (box.h - 16) / 3.2                                  # px per m: 3.2 m around the door
+        cx, cy = box.center
+
+        def scr(x, y_):
+            return cx + (x - mid[0]) * k, cy + (y_ - mid[1]) * k
+        clip = self.screen.get_clip()
+        self.screen.set_clip(box.inflate(-2, -2).clip(clip) if clip else box.inflate(-2, -2))
+        for (ci, cj) in self.cells:                              # floor around the door
+            if abs((ci + 0.5) * CELL - mid[0]) < 2.6 and abs((cj + 0.5) * CELL - mid[1]) < 2.6:
+                x0, y0 = scr(ci * CELL, cj * CELL)
+                pygame.draw.rect(self.screen, STYLE_COLORS.get(self.styles.get((ci, cj)), FLOOR_COL),
+                                 pygame.Rect(x0, y0, CELL * k + 1, CELL * k + 1))
+        walls = pl.wall_obstacles(dict(md, door_state={}, door_default="closed"))
+        for x0, y0, x1, y1 in walls:
+            if abs((x0 + x1) / 2 - mid[0]) < 3 and abs((y0 + y1) / 2 - mid[1]) < 3:
+                a0, b0 = scr(x0, y0)
+                a1, b1 = scr(x1, y1)
+                pygame.draw.rect(self.screen, WALL_COL,
+                                 pygame.Rect(a0, b0, max(1, a1 - a0) + 1, max(1, b1 - b0) + 1))
+        bad = door in self.door_issues()
+        col = DANGER if bad else DOOR_COL
+        opened = arch.door_is_open(md, kind[0], i, j)
+        arc = [scr(*arch.leaf_segment(md, kind[0], i, j, angle=a)[1])
+               for a in range(0, int(arch.DOOR_OPEN_DEG) + 1, 5)]
+        hinge, tip = arch.leaf_segment(md, kind[0], i, j, opened=True)
+        pygame.draw.lines(self.screen, col, False, arc, 1)
+        pygame.draw.line(self.screen, col, scr(*hinge), scr(*(tip if opened else arc[0])), 4)
+        hx, hy = scr(*hinge)
+        pygame.draw.circle(self.screen, ACCENT, (int(hx), int(hy)), 5)
+        self.screen.set_clip(clip)
+        y = box.bottom + 8
+        ok = not bad or not opened
+        pygame.draw.circle(self.screen, OK_COL if ok else DANGER, (bx + 5, y + 9), 5)
+        ui.text(self.screen, ("Swing is clear   \u00b7   gold dot = hinge" if not bad else
+                              "The leaf hits a wall - try Auto-fit") if opened else
+                "Closed   \u00b7   gold dot = hinge", (bx + 16, y), self.font_s,
+                OK_COL if ok else DANGER)
+        y += 26
+        y = self._half_buttons([("door_open", ("Close" if opened else "Open") + "\tO"),
+                                ("door_swing", "Swing side\tP"),
+                                ("door_hinge", "Hinge side\tH"),
+                                ("door_fit", "Auto-fit\tA")], bx, y, bw_full, mx, my)
+        return y + 14
+
+    def draw_style_section(self, bx, y, bw_full, mx, my):
+        y = self._section("Room style", bx, y)
+        bw = (bw_full - 8) // 2
+        for k, (key, v) in enumerate(STYLES.items()):
+            rect = pygame.Rect(bx + (k % 2) * (bw + 8), y + (k // 2) * 40, bw, 32)
+            self._swatch_button(rect, "st_" + key, v["label"], STYLE_COLORS.get(key, FLOOR_COL), mx, my)
+        y += ((len(STYLES) + 1) // 2) * 40 + 8
+        counts = {}
+        for ij in self.cells:
+            s = self.styles.get(ij, DEFAULT_STYLE)
+            counts[s] = counts.get(s, 0) + 1
+        info = "   \u00b7   ".join("%s %g m\u00b2" % (STYLES[s]["label"], n * CELL * CELL)
+                                   for s, n in sorted(counts.items()) if s in STYLES)
+        if info:
+            ui.text(self.screen, self._fit_text(info, self.font_s, bw_full), (bx, y), self.font_s, TEXT_DIM)
+            y += 30
+        return y
+
+    def draw_robot_section(self, bx, y, bw_full, mx, my):
+        if robots.load_robots():
+            y = self._section("Robot model", bx, y)
+            y = self._half_buttons([("rb_" + k, robots.label(k)) for k in robots.load_robots()],
+                                   bx, y, bw_full, mx, my)
+            y = self.draw_robot_card(bx, y + 4, bw_full)
+        y = self._section("Route", bx, y)
+        sp = self.robot.get("spawn")
+        n = len(self.robot.get("waypoints") or [])
+        ui.text(self.screen, "Spawn %s   \u00b7   %d waypoint%s" % (
+            "(%.1f, %.1f)" % (sp["x"], sp["y"]) if sp else "not set", n, "" if n == 1 else "s"),
+            (bx, y), self.font_s, TEXT if sp else TEXT_DIM)
+        y += 26
+        self._draw_button(pygame.Rect(bx, y, bw_full, 32), "route_clear", "Clear waypoints", mx, my,
+                          danger=True)
+        return y + 52
+
+    def draw_floor_section(self, bx, y, bw_full, mx, my):
+        y = self._section("Floor", bx, y)
+        lights = sum(1 for v in self.cells.values() if v == 2)
+        ui.text(self.screen, "%g m\u00b2 of floor   \u00b7   %d ceiling light%s" % (
+            len(self.cells) * CELL * CELL, lights, "" if lights == 1 else "s"), (bx, y),
+            self.font_s, TEXT_DIM)
+        y += 28
+        self._draw_button(pygame.Rect(bx, y, bw_full, 32), "walls", "Wall the floor outline\tW",
+                          mx, my)
+        return y + 52
+
+    def draw_map_section(self, bx, y, bw_full, mx, my):
+        """Map size steppers (3 m steps) + whole-map actions."""
+        y = self._section("Map", bx, y, "%d \u00d7 %d cells" % (self.nx, self.ny))
+        for label, val, minus, plus in (("Width", self.nx * CELL, "gx-", "gx+"),
+                                        ("Depth", self.ny * CELL, "gy-", "gy+")):
+            ui.text(self.screen, label, (bx, y + 7), self.font_s, TEXT_DIM)
+            box = pygame.Rect(bx + 70, y, bw_full - 70 - 2 * 38, 30)
+            ui.field(self.screen, box, "%g m" % val, self.f["mono"])
+            self._draw_button(pygame.Rect(box.right + 6, y, 32, 30), minus, "\u2212", mx, my, center=True)
+            self._draw_button(pygame.Rect(box.right + 44, y, 32, 30), plus, "+", mx, my, center=True)
+            y += 38
+        y += 4
+        y = self._half_buttons([("walls", "Auto-walls\tW"), ("clear", "Clear all\tC")],
+                               bx, y, bw_full, mx, my)
+        return y + 10
+
+    def draw_footer(self, px, bx, bw_full, mx, my):
+        """Fixed command bar: undo / redo / load, save map / USD / BEV."""
+        top = self.win_h - STATUS_H - FOOTER_H
+        pygame.draw.rect(self.screen, PANEL_BG, (px + 1, top, PANEL_W - 1, FOOTER_H))
+        pygame.draw.line(self.screen, BORDER, (px, top), (self.win_w, top))
+        defs = [("undo", "Undo\t^Z"), ("redo", "Redo\t^Y"), ("load", "Load\tL"),
+                ("savemap", "Save\t^S"), ("usd", "USD\tS"), ("export", "BEV\tB")]
+        gap = 8
+        w = (bw_full - 2 * gap) // 3
+        self.footer_buttons = []
+        for k, (key, label) in enumerate(defs):
+            rect = pygame.Rect(bx + (k % 3) * (w + gap), top + 14 + (k // 3) * 40, w, 32)
+            n = len(self.buttons)
+            self._draw_button(rect, key, label, mx, my)
+            self.footer_buttons.append(self.buttons.pop(n))
+
+    def draw_placement(self, bx, y, bw_full, mx, my):
+        """Grid step pills + wall magnet / no overlap toggles."""
+        ui.tracked(self.screen, "Placement", (bx, y), self.f["caption"])
+        ui.text(self.screen, "G", (bx + bw_full - 8, y), self.f["caption"], TEXT_DIM)
         y += 22
+        steps = list(pl.SNAP_STEPS)
+        gap = 6
+        w = (bw_full - gap * (len(steps) - 1)) // len(steps)
+        for k, s in enumerate(steps):
+            rect = pygame.Rect(bx + k * (w + gap), y, w, 28)
+            ui.pill(self.screen, rect, SNAP_LABELS[s], self.f["caption"],
+                    active=(s == self.snap_step), hover=rect.collidepoint(mx, my))
+            self.buttons.append((rect, "snap_%g" % s, SNAP_LABELS[s]))
+        y += 38
+        bw = (bw_full - 8) // 2
+        self._draw_button(pygame.Rect(bx, y, bw, 32), "magnet", "Wall magnet\tM", mx, my)
+        self._draw_button(pygame.Rect(bx + bw + 8, y, bw, 32), "overlap", "No overlap\tK", mx, my)
+        y += 40
+        ui.text(self.screen, "Alt = free move   ·   arrows nudge   ·   R / wheel rotate",
+                (bx, y), self.f["caption"], TEXT_DIM)
+        return y + 30
+
+    @staticmethod
+    def pretty(name):
+        """Readable asset label: SM_ArmChair_01 -> ArmChair 01."""
+        for pre in ("SM_", "S_", "SKM_"):
+            if name.startswith(pre):
+                name = name[len(pre):]
+        return name.replace("_", " ")
+
+    def _fit_text(self, s, font, w):
+        if font.size(s)[0] <= w:
+            return s
+        while s and font.size(s + "\u2026")[0] > w:
+            s = s[:-1]
+        return s + "\u2026"
+
+    def thumb(self, asset, size):
+        """Colored top-down image of a prop (tinted footprint mask as fallback), fit in a
+        size x size box; None if the prop has never been captured."""
+        key = (asset, size)
+        if key not in self._thumb_cache:
+            surf = None
+            mesh = self._get_mesh_surface(asset, color=True)
+            colored = mesh is not None
+            if mesh is None:
+                mesh = self._get_mesh_surface(asset)
+            if mesh is not None:
+                src = mesh[0]
+                k = size / float(max(src.get_width(), src.get_height()))
+                surf = pygame.transform.smoothscale(src, (max(1, int(src.get_width() * k)),
+                                                          max(1, int(src.get_height() * k))))
+                if not colored:
+                    surf = surf.copy()
+                    surf.fill(FURNI_COL + (255,), special_flags=pygame.BLEND_RGBA_MULT)
+            self._thumb_cache[key] = surf
+        return self._thumb_cache[key]
+
+    def _draw_thumb(self, asset, box):
+        img = self.thumb(asset, min(box.w, box.h) - 8)
+        if img is None:
+            ui.text(self.screen, self.pretty(asset)[:1], box.center, self.f["title"], TEXT_DIM,
+                    center=True)
+        else:
+            self.screen.blit(img, img.get_rect(center=box.center))
+
+    def draw_library(self, px, bx, y, bw_full, mx, my, avail_h):
+        """Selected prop preview, category pills, search and a grid of thumbnail cards."""
+        fp = self.filtered_palette()
+        ui.tracked(self.screen, "Library", (bx, y), self.f["caption"])
+        n = "%d items" % len(fp)
+        ui.text(self.screen, n, (bx + bw_full - self.f["caption"].size(n)[0], y),
+                self.f["caption"], TEXT_DIM)
+        y += 22
+
+        # preview of the prop about to be placed
+        if self.palette:
+            name = self.palette[self.pal_sel][0]
+            card = pygame.Rect(bx, y, bw_full, 112)
+            ui.card(self.screen, card, with_shadow=False)
+            box = pygame.Rect(card.x + 8, card.y + 8, 96, 96)
+            pygame.draw.rect(self.screen, PLAN_BG, box, border_radius=6)
+            self._draw_thumb(name, box)
+            tx, tw = box.right + 12, card.right - box.right - 20
+            ui.text(self.screen, self._fit_text(self.pretty(name), self.f["body"], tw),
+                    (tx, card.y + 10), self.f["body"], C0)
+            sh = bev.default_shape(name)
+            info = sb.load_library().get(name, {})
+            rows = ["%.2f x %.2f m" % (sh["w"], sh["h"]),
+                    " · ".join(v for v in (info.get("category"), info.get("env")) if v) or "office pack",
+                    "yaw %d deg  ·  %s" % (int(self.cur_yaw), self.place_shape)]
+            for k, s in enumerate(rows):
+                ui.text(self.screen, self._fit_text(s, self.font_s, tw), (tx, card.y + 36 + k * 20),
+                        self.font_s, TEXT_DIM)
+            y += card.h + 12
 
         # category tabs (pills)
         categories = ["All"] + list(self.palette_categories().keys())
@@ -1480,38 +2119,34 @@ class Editor:
                      self.font_s, placeholder=True)
         y += 42
 
-        # filtered items
-        fp = self.filtered_palette()
-        self._pal_rects = []
-        for filt_idx, (name, _rad) in enumerate(fp):
-            real_idx = self.palette.index((name, _rad))
-            rect = pygame.Rect(bx - 6, y, bw_full + 12, 26)
-            sel = (real_idx == self.pal_sel and self.tool == "furniture")
-            if sel:
-                ui.selected_row(self.screen, rect)
-            elif rect.collidepoint(mx, my):
-                pygame.draw.rect(self.screen, BTN_HOVER, rect, border_radius=6)
-            ui.text(self.screen, name, (rect.x + 12, rect.y + 4), self.font_s,
-                    C0 if sel else TEXT)
+        # thumbnail cards (only the visible ones are drawn / loaded)
+        gap = 8
+        cw = (bw_full - gap * (LIB_COLS - 1)) // LIB_COLS
+        ch = THUMB + 34
+        index = {item: k for k, item in enumerate(self.palette)}
+        for k, item in enumerate(fp):
+            name = item[0]
+            real_idx = index[item]
+            rect = pygame.Rect(bx + (k % LIB_COLS) * (cw + gap), y + (k // LIB_COLS) * (ch + gap), cw, ch)
             self._pal_rects.append((real_idx, rect))
-            y += 28
+            if rect.bottom < 0 or rect.top > avail_h:
+                continue
+            sel = real_idx == self.pal_sel
+            hov = rect.collidepoint(mx, my)
+            pygame.draw.rect(self.screen, ACCENT_DIM if sel else (BTN_HOVER if hov else PANEL_BG),
+                             rect, border_radius=8)
+            pygame.draw.rect(self.screen, ACCENT if sel else BORDER, rect, 2 if sel else 1,
+                             border_radius=8)
+            self._draw_thumb(name, pygame.Rect(rect.x + 4, rect.y + 4, cw - 8, THUMB))
+            label = self._fit_text(self.pretty(name), self.f["caption"], cw - 10)
+            ui.text(self.screen, label, (rect.centerx, rect.bottom - 15), self.f["caption"],
+                    C0 if sel else TEXT, center=True)
+        rows = (len(fp) + LIB_COLS - 1) // LIB_COLS
+        y += rows * (ch + gap)
         if not fp:
             ui.text(self.screen, "No match", (bx, y + 4), self.font_s, TEXT_DIM)
             y += 28
-        y += 10
-
-        # scroll limits + reset clip
-        content_h = y + self.panel_scroll
-        self._panel_max_scroll = max(0, content_h - avail_h + 8)
-        self.panel_scroll = max(0, min(self._panel_max_scroll, self.panel_scroll))
-        self.screen.set_clip(None)
-
-        # slim scrollbar (only when content overflows)
-        if self._panel_max_scroll > 0:
-            bar_h = max(30, int(avail_h * avail_h / float(content_h)))
-            bar_y = int((avail_h - bar_h) * self.panel_scroll / self._panel_max_scroll)
-            pygame.draw.rect(self.screen, BORDER, (self.win_w - 6, bar_y + 4, 3, bar_h - 8),
-                             border_radius=2)
+        return y + 16
 
     def draw_transform_panel(self, px, y):
         f = self.furniture[self.selected]
@@ -1596,7 +2231,11 @@ class Editor:
                    "robot": "robot"}
         active = (tool_of.get(key) == self.tool or key == "et_%d" % self.edge_type
                   or key == "st_" + self.paint_style
-                  or key == "rb_" + (self.robot.get("model") or robots.DEFAULT_ROBOT))
+                  or key == "rb_" + (self.robot.get("model") or robots.DEFAULT_ROBOT)
+                  or key == "snap_%g" % self.snap_step
+                  or (key == "magnet" and self.wall_magnet)
+                  or (key == "overlap" and self.no_overlap))
+        active = active and key not in ("floor", "wall", "furni", "style", "robot")
         ui.button(self.screen, rect, label, self.f["button"], active=active and not danger,
                   hover=rect.collidepoint(mx, my), danger=danger,
                   align="center" if center else "left")

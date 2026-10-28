@@ -24,6 +24,7 @@ import json
 import scene_builder as sb
 import shape_tools as st
 import architecture as arch
+import map_format
 
 from config import (CELL, BEV_DIR, MESH_DIR, SHAPES_JSON, FURNITURE,
                     BEV_SCALE, WALL_M, DOOR_GAP, UNKNOWN, FREE, OCC, SLICE_Z, slice_dir)
@@ -105,6 +106,7 @@ ROW_FIELDS = ["kind", "name", "x", "y", "yaw", "shape", "w", "h", "r", "x2", "y2
 
 def scene_rows(map_data):
     """Return a list of dicts (per ROW_FIELDS) describing the whole scene in meters."""
+    map_data = map_format.ensure(map_data)            # legacy 3 m maps -> 1 m grid
     nx, ny, cells, vedges, hedges, furniture = sb.parse_map(map_data)
     rows = []
 
@@ -364,6 +366,7 @@ def export_scene(map_data, stem="scene", scale=BEV_SCALE):
 
     Each scene gets its own folder with the full {stem}.csv/.svg/.png/.pgm/.yaml.
     """
+    map_data = map_format.ensure(map_data)
     if not os.path.isdir(MESH_DIR):
         os.makedirs(MESH_DIR)
     scene_dir = os.path.join(BEV_DIR, stem)   # moi scene 1 folder

@@ -17,7 +17,7 @@ import os
 
 from pxr import Usd, UsdGeom, UsdLux, Gf, Sdf
 
-from config import (CELL, WALL_H, FLOOR, CEILING, WALL, WALL_DOOR,
+from config import (KIT_M as CELL, WALL_H, FLOOR, CEILING, WALL, WALL_DOOR,
                     LIGHT_MESH, PROPS_REL, SCENES_DIR)
 from scene_builder import (place, asset_exists, check_required,
                            available_furniture, asset_path)

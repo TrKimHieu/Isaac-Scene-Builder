@@ -31,7 +31,7 @@ the tool builds a USD scene and a top-down occupancy map (ROS-ready).
 
 ## Workflow — three steps, from sketch to robot map
 
-> Each grid cell = **3×3 meters**. You only work in step 1; the next two are a single keypress.
+> Each grid cell = **1×1 meter** (stronger lines every 3 m, one kit module). You only work in step 1; the next two are a single keypress.
 
 | Step | You do | Result |
 |:---:|---|---|
@@ -84,16 +84,26 @@ python src/scene_editor.py
 ```text
 1  Floor      → click / drag to paint floor
 W             → auto-generate boundary walls
-2  Wall       → click an edge to cycle wall / door / window / glass / opening,
-                or pick an EDGE TYPE in the panel and drag along a row;  O = open/close door
+2  Wall       → pick wall / door / window / glass / opening in the panel, click or drag
+                along a row; click a door to edit it (O open, P swing, H hinge, A auto-fit)
 4  Style      → paint a room style (Office / Hospital / Warehouse / Home) on the floor
 3  Furniture  → pick in the palette, click to place  (hold left + drag to move)
 ```
 
 Walls are built like NVIDIA's office scene: two back-to-back panels (each face takes the
 style of the room it looks into), capped at free ends and corners; doors get a real frame +
-leaf (open by default), windows and glass walls are full 3 m modules. Example:
+leaf (open by default). The Office kit is made of 3 m modules, so on the 1 m grid collinear
+edges are merged into runs: walls are filled with 3 m panels and one 2 m / 1 m panel
+shortened along its length, a window run gets SM_Window_3m per 3 m and glazing for the rest,
+glass walls use the 2 m + 1 m panels, and a door takes one 1 m edge (its 1.05 m frame covers
+the wall ends). Floors and ceilings are one mesh per room style with the kit tile's own
+material and UVs (st = xy / 3 m), so tiles keep their real size. Examples:
+`data/maps/demo_1m_grid.json` (2 m corridor, 2 x 2 m store, 2 x 3 m WC) and
 `data/maps/demo_architecture.json`.
+
+Maps saved before the 1 m grid (3 m cells, no `"cell"` key) still open everywhere: each old
+cell becomes 3 x 3 cells, a door moves to the middle 1 m edge of its old side, a lamp stays
+in the block centre. `python tools/migrate_maps.py` rewrites the files themselves.
 
 **Procedural scenes** (`src/map_generator.py`, deterministic per seed)
 ```bash
@@ -116,6 +126,18 @@ python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
   furniture mesh; `UsdSemantics` class labels (`floor`, `wall`, `door`, `window`, `glass_wall`,
   `ceiling`, furniture category such as `table`, `seating`, `medical`) for Replicator
   segmentation / bounding boxes; robot spawn + waypoints as `/World/Robot` markers.
+- **Doors:** a lintel (wall panels with the room's style) fills the wall above every door
+  and opening up to the ceiling; openings also get a soffit. Each door has a swing side (P)
+  and a hinge side (H, `"door_hinge"` in the map); the plan draws the leaf and its swing arc,
+  red when the leaf would run into a wall. New and generated doors are fitted automatically
+  (`architecture.best_door_setup`), A re-fits one.
+- **Panel:** tool tabs, a hint card with the mouse / keys of the current tool, the tool's
+  own controls (edge types with colour swatches, door inspector with a zoomed plan, room
+  styles, robot route), the map size in meters, and a fixed bar for undo / save / export.
+- **Furniture tool (3):** thumbnail library of the top-down captures, a placement preview
+  (green = free, red = no room), grid 50 / 25 / 10 / 5 cm or free (G), wall magnet (M) that
+  slides props flush against walls and other props, no overlap (K) with walls, doorways, door
+  leaves and other props; Alt = free move, arrows nudge, Del / Ctrl+D delete / duplicate.
 - **Robot tool (5):** pick the robot model, click = waypoint, Shift+click = spawn, wheel =
   heading, right-click = remove. The footprint is drawn to scale at the spawn.
 - **Robot models** (`data/robots/<id>.json` + `.svg`, `python tools/import_robots.py`):
@@ -154,6 +176,10 @@ B  →  output/bev/sceneN/           # BEV map for the robot (5 formats)
 | `W` | Auto boundary walls | `S` / `B` | Export USD / BEV |
 | `C` | Clear all | `Ctrl+S` / `L` | Save / Load map |
 | `+` `-` | Resize grid | `F11` | Fullscreen |
+| `G` | Placement grid 50/25/10/5 cm / free | `M` / `K` | Wall magnet / No overlap |
+| Arrows | Nudge selected prop (`Shift` ×5) | `Alt`+drag | Free move |
+| `Del` / `Ctrl+D` | Delete / duplicate prop | `P` | Door swings into the other room |
+| `H` | Door hinge on the other jamb | `A` | Auto-fit the door (leaf clear of walls) |
 
 <br>
 

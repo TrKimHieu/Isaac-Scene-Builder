@@ -2,7 +2,7 @@
 from config import (
     PROJECT_ROOT, SRC_DIR, ASSETS_DIR, OUTPUT_DIR, SCENES_DIR, BEV_DIR,
     MAPS_DIR, SHAPES_JSON, CATALOG_DIR, MESH_DIR, RENDER_DIR,
-    CELL, WALL_H, FLOOR, CEILING, WALL, WALL_DOOR, LIGHT_MESH, REQUIRED,
+    CELL, KIT_M, WALL_H, FLOOR, CEILING, WALL, WALL_DOOR, LIGHT_MESH, REQUIRED,
     FURNITURE, FURNITURE_CATEGORIES, EXTRA_FURNITURE, STRUCTURE_CHOICES,
     BEV_SCALE, WALL_M, DOOR_GAP, UNKNOWN, FREE, OCC,
     WHITE_TOL, SAT_TOL,
@@ -23,7 +23,7 @@ def test_cell_is_positive():
 
 
 def test_wall_h_equals_cell():
-    assert WALL_H == CELL
+    assert WALL_H == KIT_M          # one kit module tall; cells are 1 m
 
 
 def test_required_assets_listed():

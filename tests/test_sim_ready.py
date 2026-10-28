@@ -8,16 +8,18 @@ import pytest
 from PIL import Image
 
 import architecture as arch
+import map_format
 import nav_export
-from config import CELL, EDGE_DOOR, EDGE_WALL
+from config import LEGACY_CELL, EDGE_DOOR, EDGE_WALL
 
 
 def _room(**extra):
+    """Two 3 x 3 m rooms with a door between them (a legacy 3 m map, converted)."""
     m = {"grid": [2, 1], "cells": {"0,0": 1, "1,0": 1},
          "vedges": {"0,0": EDGE_WALL, "1,0": EDGE_DOOR, "2,0": EDGE_WALL},
          "hedges": {"0,0": 1, "1,0": 1, "0,1": 1, "1,1": 1}, "furniture": []}
     m.update(extra)
-    return m
+    return map_format.ensure(m)
 
 
 # ----------------------------------------------------------------------------
@@ -51,7 +53,7 @@ class TestRosMap:
         col = int((1.0 + 0.2) * 20)
         row = H - 1 - int((0.5 + 0.2) * 20)
         assert pgm[row, col] == 0                              # the box at (1.0, 0.5)
-        row_mirror = H - 1 - int((CELL - 0.5 + 0.2) * 20)
+        row_mirror = H - 1 - int((LEGACY_CELL - 0.5 + 0.2) * 20)
         assert pgm[row_mirror, col] != 0                       # not at the mirrored y
 
 

@@ -31,7 +31,7 @@ phần mềm dựng ra scene USD và bản đồ occupancy (nhìn từ trên xu�
 
 ## 🔄 Quy trình — ba bước, từ nét vẽ đến bản đồ cho robot
 
-> Mỗi ô lưới = **3×3 mét**. Bạn chỉ làm việc ở bước 1; hai bước sau là một cú bấm phím.
+> Mỗi ô lưới = **1×1 mét** (đường lưới đậm mỗi 3 m, đúng một module kit). Bạn chỉ làm việc ở bước 1; hai bước sau là một cú bấm phím.
 
 | Bước | Bạn làm | Kết quả |
 |:---:|---|---|
@@ -84,15 +84,25 @@ python src/scene_editor.py
 ```text
 1  Floor      → click / kéo tô sàn
 W             → tự sinh tường bao quanh
-2  Wall       → click cạnh để đổi tường / cửa / cửa sổ / kính / lối mở,
-                hoặc chọn EDGE TYPE ở panel rồi kéo dọc hàng;  O = mở/đóng cửa
+2  Wall       → chọn tường / cửa / cửa sổ / kính / lối mở ở panel, click hoặc kéo dọc
+                hàng; click một cửa để chỉnh (O mở, P chiều mở, H bản lề, A tự chỉnh)
 4  Style      → tô style phòng (Office / Hospital / Warehouse / Home) lên sàn
 3  Furniture  → chọn ở palette, click đặt  (giữ trái + kéo để di chuyển)
 ```
 
 Tường được dựng như scene office của NVIDIA: hai tấm panel quay lưng vào nhau (mỗi mặt mang
-style của phòng nó quay vào), có bịt đầu tường và góc; cửa có khung + cánh thật (mặc định mở),
-cửa sổ và tường kính là module 3 m. Ví dụ: `data/maps/demo_architecture.json`.
+style của phòng nó quay vào), có bịt đầu tường và góc; cửa có khung + cánh thật (mặc định mở).
+Bộ kit Office làm theo module 3 m, nên trên lưới 1 m các cạnh thẳng hàng được gộp thành đoạn:
+tường lấp bằng tấm 3 m và một tấm 2 m / 1 m thu ngắn theo chiều dài, dải cửa sổ dùng
+SM_Window_3m cho mỗi 3 m và kính cho phần lẻ, vách kính dùng tấm 2 m + 1 m, còn cửa chiếm một
+cạnh 1 m (khung 1,05 m che đầu tường). Sàn và trần là một mesh cho mỗi style phòng, dùng đúng
+vật liệu và UV của tấm kit (st = xy / 3 m) nên gạch giữ đúng kích thước thật. Ví dụ:
+`data/maps/demo_1m_grid.json` (hành lang 2 m, kho 2 × 2 m, WC 2 × 3 m) và
+`data/maps/demo_architecture.json`.
+
+Map lưu trước khi có lưới 1 m (ô 3 m, không có khoá `"cell"`) vẫn mở được ở mọi nơi: mỗi ô cũ
+thành 3 × 3 ô, cửa chuyển về cạnh 1 m chính giữa cạnh cũ, đèn giữ ở ô giữa khối.
+`python tools/migrate_maps.py` chuyển hẳn các file.
 
 **Sinh scene tự động** (`src/map_generator.py`, tất định theo seed)
 ```bash
@@ -114,6 +124,17 @@ python tools/check_density_distribution.py [--maps "data/maps/generated/*.json"]
   nhãn `UsdSemantics` theo class (`floor`, `wall`, `door`, `window`, `glass_wall`, `ceiling`,
   loại nội thất như `table`, `seating`, `medical`) cho segmentation / bounding box của
   Replicator; điểm xuất phát + waypoint của robot là các marker `/World/Robot`.
+- **Cửa:** phía trên mỗi cửa và lối mở có lanh tô (tấm tường cùng style phòng) kín tới trần;
+  lối mở có thêm mặt dưới. Mỗi cửa có chiều mở (P) và phía bản lề (H, `"door_hinge"` trong
+  map); bản vẽ hiện cánh cửa và cung quét, màu đỏ khi cánh sẽ đụng tường. Cửa mới và cửa
+  sinh tự động được chỉnh sẵn (`architecture.best_door_setup`), phím A chỉnh lại một cửa.
+- **Panel:** tab công cụ, thẻ gợi ý thao tác chuột / phím của công cụ đang chọn, phần điều
+  khiển riêng của công cụ (loại cạnh có mẫu màu, bảng cửa với bản vẽ phóng to, style phòng,
+  lộ trình robot), kích thước map theo mét, và thanh lệnh cố định cho undo / lưu / xuất.
+- **Công cụ Nội thất (3):** thư viện dạng thẻ có ảnh chụp từ trên xuống, bóng xem trước vị trí
+  đặt (xanh = trống, đỏ = không đủ chỗ), lưới 50 / 25 / 10 / 5 cm hoặc tự do (G), nam châm tường
+  (M) kéo vật sát mặt tường và vật bên cạnh, chống đè (K) lên tường, lối cửa, cánh cửa và vật
+  khác; Alt = di chuyển tự do, phím mũi tên dịch từng bước, Del / Ctrl+D xoá / nhân bản.
 - **Công cụ Robot (5):** chọn mẫu robot, click = waypoint, Shift+click = điểm xuất phát, lăn
   chuột = hướng, chuột phải = xoá. Footprint được vẽ đúng tỉ lệ tại điểm xuất phát.
 - **Mẫu robot** (`data/robots/<id>.json` + `.svg`, `python tools/import_robots.py`): JetAuto Pro
@@ -151,6 +172,10 @@ B  →  output/bev/sceneN/           # bản đồ BEV cho robot (5 định dạ
 | `W` | Tự sinh tường bao | `S` / `B` | Xuất USD / BEV |
 | `C` | Xoá hết | `Ctrl+S` / `L` | Lưu / Nạp bản đồ |
 | `+` `-` | Đổi kích thước lưới | `F11` | Toàn màn hình |
+| `G` | Lưới đặt 50/25/10/5 cm / tự do | `M` / `K` | Nam châm tường / Chống đè |
+| Mũi tên | Dịch vật đang chọn (`Shift` ×5) | `Alt`+kéo | Di chuyển tự do |
+| `Del` / `Ctrl+D` | Xoá / nhân bản vật | `P` | Cửa mở sang phòng bên kia |
+| `H` | Bản lề sang khung bên kia | `A` | Tự chỉnh cửa (cánh không đụng tường) |
 
 <br>
 

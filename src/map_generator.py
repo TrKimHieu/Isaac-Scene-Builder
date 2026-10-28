@@ -22,10 +22,11 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from config import (CELL, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS, EDGE_OPENING,
+from config import (CELL, LEGACY_CELL as BLOCK, EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS, EDGE_OPENING,
                     FURNITURE, EXTRA_FURNITURE)
 from utils import load_library, load_prop_shapes, bbox_corners
 import architecture as arch
+import map_format
 import robots
 
 RES = 0.1               # m / px of the planning grid
@@ -232,7 +233,7 @@ class Room:
 
     def bounds(self, inset=0.0):
         i0, j0, i1, j1 = self.rect
-        return (i0 * CELL + inset, j0 * CELL + inset, (i1 + 1) * CELL - inset, (j1 + 1) * CELL - inset)
+        return (i0 * BLOCK + inset, j0 * BLOCK + inset, (i1 + 1) * BLOCK - inset, (j1 + 1) * BLOCK - inset)
 
     def area_cells(self):
         i0, j0, i1, j1 = self.rect
@@ -479,9 +480,9 @@ def door_frames(edges):
             continue
         kind, i, j = e
         if kind == "v":
-            out.append((e, (i * CELL, (j + 0.5) * CELL), (1.0, 0.0)))
+            out.append((e, (i * BLOCK, (j + 0.5) * BLOCK), (1.0, 0.0)))
         else:
-            out.append((e, ((i + 0.5) * CELL, j * CELL), (0.0, 1.0)))
+            out.append((e, ((i + 0.5) * BLOCK, j * BLOCK), (0.0, 1.0)))
     return out
 
 
@@ -725,6 +726,12 @@ def generate_map(seed, theme=None, size=None, density=None, assets=None, robot=N
         if right not in owner:
             md["door_flip"] = {arch.edge_key(*entrance): True}
 
+    # rooms are laid out on 3 m blocks (one Office kit module); the saved map is on the
+    # 1 m grid: each block -> 3 x 3 cells, doors on the middle 1 m edge of their side
+    md["cell"] = BLOCK
+    md = arch.fit_doors(map_format.upgrade(md))   # no leaf swinging into a wall
+    nx, ny = md["grid"]
+
     # planning grid + door clearances + keypoints (spawn first)
     g = Grid(md, nx, ny, robot_r)
     for e, (mx, my), n in door_frames(edges):
@@ -761,7 +768,7 @@ def generate_map(seed, theme=None, size=None, density=None, assets=None, robot=N
     for rm in rooms:
         inside = g.poly_mask([(x, y) for x, y in _rect_pts(rm.bounds(0.13))])
         recipe = R.get(rm.type, [])
-        area = rm.area_cells() * CELL * CELL
+        area = rm.area_cells() * BLOCK * BLOCK
         target = density * area * (0.35 if "corridor" in rm.type else 1.0)
         scale = min(1.0, density / 0.25)            # sparser rooms at low density
         for role, how, (lo, hi), opt in recipe:
@@ -867,6 +874,7 @@ def _connected(n, shared):
 # ----------------------------------------------------------------------------
 def map_metrics(md):
     """Density / reachability numbers of one map."""
+    md = map_format.ensure(md)
     nx, ny = md["grid"]
     floor_cells = sum(1 for v in md["cells"].values() if v >= 1)
     floor_m2 = floor_cells * CELL * CELL

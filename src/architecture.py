@@ -10,22 +10,36 @@ Map additions (all optional, old maps load unchanged):
   "door_default": "open" | "closed"
   "door_state":   {"v:i,j": "closed", "h:i,j": "open"}   per-door override
   "door_flip":    {"v:i,j": true}   door turned 180 deg (swings into the other room)
+  "door_hinge":   {"v:i,j": true}   hinge on the other jamb (same room, mirrored swing)
   edge values in vedges/hedges: 1 wall, 2 door, 3 window, 4 glass wall, 5 opening (no leaf)
 
 Geometry (Office kit, see config.KIT): a vedge (i,j) runs from (iC, jC) along +Y, a hedge
-(i,j) from (iC, jC) along +X (C = CELL). A wall is two back-to-back panels; each panel faces
-one room and takes that room's wall style. Free wall ends get an end cap; corners / T /
-crossings get a post closed by end caps on the open sides.
+(i,j) from (iC, jC) along +X (C = CELL = 1 m). The kit is built on 3 m modules, so
+collinear edges of one type are merged into runs and filled with kit pieces:
+  * wall run: two back-to-back SM_Wall_3m panels per piece; pieces are 3 m, the rest a 2 m
+    or 1 m "panel" item - the same face + baseboard built as a mesh by the builder with UVs
+    in meters, so the wall texture keeps its scale. Each panel faces one room and takes that
+    room's wall style (a run breaks where a face style changes).
+  * window run: SM_Window_3m per 3 m, the rest SM_Glass_2m / 1m.
+  * glass run: SM_Glass_2m + SM_Glass_1m.
+  * door: one 1 m edge holding the SM_DoorB frame (1.05 m, its jambs cover the wall ends)
+    + leaf + handle; opening: a 1 m gap. Both leave the wall ends free (end caps) and get
+    a lintel above (wall panels from LINTEL_Z to the ceiling, the room's wall style; an
+    opening also gets a soffit under it).
+Free wall ends get an end cap; corners / T / crossings get a post closed by end caps on
+the open sides. Floors and ceilings are one mesh per room style (builder), textured like
+the 3 m kit tiles.
 """
 import math
 
-from config import (CELL, WALL_H, FLOOR, CEILING, LIGHT_MESH, KIT, WALL_HALF, DOOR_HINGE,
+from config import (CELL, KIT_M, WALL_H, FLOOR, CEILING, LIGHT_MESH, KIT, WALL_HALF, DOOR_HINGE,
                     DOOR_HANDLE, DOOR_OPEN_DEG, DOOR_DEFAULT, STYLES, DEFAULT_STYLE,
                     EDGE_WALL, EDGE_DOOR, EDGE_WINDOW, EDGE_GLASS, EDGE_OPENING)
 from utils import ikey
 
-THICK = (EDGE_WALL, EDGE_DOOR, EDGE_OPENING)      # double-panel edges (22.4 cm)
+THICK = (EDGE_WALL,)                  # double-panel edges (22.4 cm); doors are gaps now
 # unit direction + yaw that maps a module's local +Y onto it
+LINTEL_Z = 2.10           # lintel bottom: 2 cm into the SM_DoorB header (2.07..2.123 m)
 DIRS = {"N": ((0.0, 1.0), 0.0), "S": ((0.0, -1.0), 180.0),
         "E": ((1.0, 0.0), -90.0), "W": ((-1.0, 0.0), 90.0)}
 # yaw that turns an end cap's outward face (local -Y) towards a direction
@@ -75,6 +89,37 @@ def door_yaw(map_data, kind, i, j, yaw):
     return yaw + (180.0 if door_flipped(map_data, kind, i, j) else 0.0)
 
 
+def door_mirrored(map_data, kind, i, j):
+    """True -> hinge on the other jamb (the leaf still swings into the same room)."""
+    return bool((map_data.get("door_hinge") or {}).get(edge_key(kind, i, j)))
+
+
+def door_pose(map_data, kind, i, j, opened=None):
+    """(frame mid, frame yaw, hinge xy, leaf yaw) of the door on edge (kind, i, j).
+    The leaf (SM_DoorB_Door, local -Y from the hinge) swings into the room on the frame's
+    local +X side; mirrored = hinged on the other jamb, turned 180 and swung the other way.
+    opened: None = its own state, True / False to force."""
+    p0, dname, _r, _l = edge_frame(kind[0], i, j)
+    u, yaw = DIRS[dname]
+    dyaw = door_yaw(map_data, kind[0], i, j, yaw)
+    mid = _add(p0, u, CELL / 2.0)
+    m = door_mirrored(map_data, kind[0], i, j)
+    hinge = _add(mid, _rot((DOOR_HINGE[0], -DOOR_HINGE[1] if m else DOOR_HINGE[1]), dyaw))
+    closed = dyaw + (180.0 if m else 0.0)
+    is_open = door_is_open(map_data, kind[0], i, j) if opened is None else opened
+    leaf = closed + ((-DOOR_OPEN_DEG if m else DOOR_OPEN_DEG) if is_open else 0.0)
+    return mid, dyaw, hinge, leaf
+
+
+def leaf_segment(map_data, kind, i, j, opened=None, angle=None):
+    """(hinge, tip) of the leaf; angle: degrees opened (overrides the door state)."""
+    mid, dyaw, hinge, leaf = door_pose(map_data, kind, i, j, opened)
+    if angle is not None:
+        m = door_mirrored(map_data, kind[0], i, j)
+        leaf = dyaw + (180.0 if m else 0.0) + (-angle if m else angle)
+    return hinge, _add(hinge, _rot((0.0, -1.0), leaf), DOOR_LEAF_W)
+
+
 def door_is_open(map_data, kind, i, j):
     st = (map_data.get("door_state") or {}).get(edge_key(kind, i, j))
     return (st or map_data.get("door_default") or DOOR_DEFAULT) != "closed"
@@ -114,11 +159,56 @@ def edge_frame(kind, i, j):
 # ----------------------------------------------------------------------------
 # Plan
 # ----------------------------------------------------------------------------
+def split_run(n):
+    """Kit piece lengths (cells) filling a run of n 1 m edges: 3 m pieces, the rest as one
+    2 m piece or 2 + 2 instead of 3 + 1 (a 1 m piece only for a 1 m run)."""
+    k = int(round(KIT_M / CELL))
+    if n <= 0:
+        return []
+    if n % k == 0:
+        return [k] * (n // k)
+    if n % k == 1 and n > k:
+        return [k] * ((n - 4) // k) + [2, 2]
+    return [k] * (n // k) + [n % k]
+
+
+def runs(map_data, styles=None):
+    """Collinear edges merged: [(kind, i, j, edge_type, n)] - n edges from edge (kind, i, j)
+    on. Walls break where either face changes room style; doors are always single."""
+    styles = cell_styles(map_data) if styles is None else styles
+    by_line = {}
+    for kind, i, j, t in edges(map_data):
+        line, pos = (i, j) if kind == "v" else (j, i)
+        by_line.setdefault((kind, line), []).append((pos, t))
+    out = []
+    for (kind, line), items in sorted(by_line.items()):
+        items.sort()
+        cur = None
+        for pos, t in items:
+            i, j = (line, pos) if kind == "v" else (pos, line)
+            _p, _d, right, left = edge_frame(kind, i, j)
+            face = (styles.get(right), styles.get(left)) if t == EDGE_WALL else None
+            if (cur and t == cur[3] and pos == cur[5] + 1 and face == cur[6]
+                    and t not in (EDGE_DOOR, EDGE_OPENING)):
+                cur[4] += 1
+                cur[5] = pos
+                continue
+            if cur:
+                out.append(tuple(cur[:5]))
+            cur = [kind, i, j, t, 1, pos, face]
+        if cur:
+            out.append(tuple(cur[:5]))
+    return out
+
+
 def plan_structure(map_data):
     """Placements for floors, ceilings, walls, doors, windows, glass and wall caps.
 
     Each item: {"name", "asset", "pos": (x, y, z), "yaw", "slot": "floor"|"ceiling"|"wall"
-    |None, "style": str|None, "kind"}. 'slot'+'style' select the material override.
+    |None, "style": str|None, "kind", "scale": (sx, sy, sz)}; 'slot'+'style' select the
+    material override. Items with "cells" (floor / ceiling), "panel" (length, z0, z1: a wall
+    face shorter than the kit's) or "quad" (soffit) are meshes built by the builder; their
+    asset is only the material source.
     """
     struct = map_data.get("structure") or {}
     floor_p = struct.get("floor", FLOOR)
@@ -127,50 +217,85 @@ def plan_structure(map_data):
     styles = cell_styles(map_data)
     items = []
 
-    def put(name, asset, pos, yaw=0.0, slot=None, style=None, kind="struct"):
-        items.append({"name": name, "asset": asset, "pos": (pos[0], pos[1], pos[2]),
-                      "yaw": float(yaw) % 360.0, "slot": slot, "style": style, "kind": kind})
+    def put(name, asset, pos, yaw=0.0, slot=None, style=None, kind="struct", **kw):
+        it = {"name": name, "asset": asset, "pos": (pos[0], pos[1], pos[2]),
+              "yaw": float(yaw) % 360.0, "slot": slot, "style": style, "kind": kind,
+              "scale": (1.0, 1.0, 1.0)}
+        it.update(kw)
+        items.append(it)
 
-    # floors + ceilings (+ light fixture handled by the builder)
-    for (i, j), st in sorted(styles.items()):
-        put("Floor_%d_%d" % (i, j), floor_p, (i * CELL, j * CELL, 0.0), 0, "floor", st, "floor")
-        put("Ceiling_%d_%d" % (i, j), ceiling_p, (i * CELL, j * CELL, WALL_H), 0, "ceiling",
-            st, "ceiling")
+    # floors + ceilings: one mesh per room style (+ light fixture handled by the builder)
+    by_style = {}
+    for ij, st in sorted(styles.items()):
+        by_style.setdefault(st, []).append(ij)
+    for st, cells in sorted(by_style.items()):
+        put("Floor_%s" % st, floor_p, (0.0, 0.0, 0.0), 0, "floor", st, "floor", cells=cells)
+        put("Ceiling_%s" % st, ceiling_p, (0.0, 0.0, WALL_H), 0, "ceiling", st, "ceiling",
+            cells=cells)
 
     def face_style(cell):
         return styles.get(cell)
 
     vertex_dirs = {}
     for kind, i, j, t in edges(map_data):
-        p0, dname, right, left = edge_frame(kind, i, j)
-        u, yaw = DIRS[dname]
-        tag = "%s%d_%d" % (kind.upper(), i, j)
-        p1 = _add(p0, u, CELL)
         if t in THICK:
+            _p0, dname, _r, _l = edge_frame(kind, i, j)
             a, b = (i, j), ((i, j + 1) if kind == "v" else (i + 1, j))
             vertex_dirs.setdefault(a, set()).add(dname)
             vertex_dirs.setdefault(b, set()).add(OPPOSITE[dname])
-            panel = KIT["wall"] if t == EDGE_WALL else KIT["wall_door"]
-            # panel A faces the right cell, panel B (180 deg, from the far end) the left one
-            put("Wall%s_a" % tag, panel, p0 + (0.0,), yaw, "wall", face_style(right) or
-                face_style(left), "wall")
-            put("Wall%s_b" % tag, panel, p1 + (0.0,), yaw + 180, "wall", face_style(left) or
-                face_style(right), "wall")
-            if t == EDGE_DOOR:
-                mid = _add(p0, u, CELL / 2.0)
-                dyaw = door_yaw(map_data, kind, i, j, yaw)
-                put("Door%s_frame" % tag, KIT["door_frame"], mid + (0.0,), dyaw, kind="door")
-                hinge = _add(mid, _rot(DOOR_HINGE, dyaw))
-                leaf_yaw = dyaw + (DOOR_OPEN_DEG if door_is_open(map_data, kind, i, j) else 0.0)
-                put("Door%s_leaf" % tag, KIT["door_leaf"], hinge + (0.0,), leaf_yaw, kind="door")
-                h = _rot(DOOR_HANDLE[:2], leaf_yaw)
-                put("Door%s_handle" % tag, KIT["door_handle"],
-                    (hinge[0] + h[0], hinge[1] + h[1], DOOR_HANDLE[2]), leaf_yaw, kind="door")
+
+    for kind, i, j, t, n in runs(map_data, styles):
+        p0, dname, right, left = edge_frame(kind, i, j)
+        u, yaw = DIRS[dname]
+        tag = "%s%d_%d" % (kind.upper(), i, j)
+        if t == EDGE_WALL:
+            s = 0
+            for k, L in enumerate(split_run(n)):
+                a0, a1 = _add(p0, u, s * CELL), _add(p0, u, (s + L) * CELL)
+                # a full 3 m piece is the kit panel itself, a shorter one a panel mesh
+                extra = {} if abs(L * CELL - KIT_M) < 1e-9 else {"panel": (L * CELL, 0.0, WALL_H)}
+                # panel A faces the right cell, panel B (180 deg, from the far end) the left one
+                put("Wall%s_%d_a" % (tag, k), KIT["wall"], a0 + (0.0,), yaw, "wall",
+                    face_style(right) or face_style(left), "wall", **extra)
+                put("Wall%s_%d_b" % (tag, k), KIT["wall"], a1 + (0.0,), yaw + 180, "wall",
+                    face_style(left) or face_style(right), "wall", **extra)
+                s += L
+        elif t in (EDGE_DOOR, EDGE_OPENING):
+            # lintel: the two wall faces above the opening, up to the ceiling
+            p1 = _add(p0, u, CELL)
+            put("Lintel%s_a" % tag, KIT["wall"], p0 + (0.0,), yaw, "wall",
+                face_style(right) or face_style(left), "wall", panel=(CELL, LINTEL_Z, WALL_H))
+            put("Lintel%s_b" % tag, KIT["wall"], p1 + (0.0,), yaw + 180, "wall",
+                face_style(left) or face_style(right), "wall", panel=(CELL, LINTEL_Z, WALL_H))
+            if t == EDGE_OPENING:                       # its underside (no door header)
+                n = (u[1], -u[0])
+                quad = [_add(p0, n, -WALL_HALF), _add(p0, n, WALL_HALF),
+                        _add(p1, n, WALL_HALF), _add(p1, n, -WALL_HALF)]
+                put("Soffit%s" % tag, KIT["wall"], (0.0, 0.0, LINTEL_Z), 0, "wall",
+                    face_style(right) or face_style(left), "wall", quad=quad)
+                continue
+            mid, dyaw, hinge, leaf_yaw = door_pose(map_data, kind, i, j)
+            put("Door%s_frame" % tag, KIT["door_frame"], mid + (0.0,), dyaw, kind="door")
+            put("Door%s_leaf" % tag, KIT["door_leaf"], hinge + (0.0,), leaf_yaw, kind="door")
+            h = _rot(DOOR_HANDLE[:2], leaf_yaw)
+            put("Door%s_handle" % tag, KIT["door_handle"],
+                (hinge[0] + h[0], hinge[1] + h[1], DOOR_HANDLE[2]), leaf_yaw, kind="door")
         elif t == EDGE_WINDOW:
-            put("Window%s" % tag, window_p, p0 + (0.0,), yaw, kind="window")
+            k_m = int(round(KIT_M / CELL))
+            for k in range(n // k_m):
+                put("Window%s_%d" % (tag, k), window_p, _add(p0, u, k * KIT_M) + (0.0,), yaw,
+                    kind="window")
+            s = (n // k_m) * k_m
+            for k, L in enumerate(_glass_pieces(n - s)):     # the rest of the run: glazing
+                put("Window%s_g%d" % (tag, k), KIT["glass_%dm" % L],
+                    _add(p0, u, s * CELL) + (0.0,), yaw, kind="window")
+                s += L
         elif t == EDGE_GLASS:
-            put("Glass%s_a" % tag, KIT["glass_2m"], p0 + (0.0,), yaw, kind="glass")
-            put("Glass%s_b" % tag, KIT["glass_1m"], _add(p0, u, 2.0) + (0.0,), yaw, kind="glass")
+            s = 0
+            for k, L in enumerate(_glass_pieces(n)):
+                put("Glass%s_%d" % (tag, k), KIT["glass_%dm" % L], _add(p0, u, s * CELL) + (0.0,),
+                    yaw, kind="glass")
+                s += L
 
     # wall caps: free ends + corner / T / cross posts
     for (vi, vj), dirs in sorted(vertex_dirs.items()):
@@ -186,6 +311,12 @@ def plan_structure(map_data):
             put("Cap_%d_%d_%s" % (vi, vj, d), KIT["wall_end"], pos + (0.0,), CAP_YAW[d],
                 "wall", _cap_style(styles, vi, vj, d), "cap")
     return items
+
+
+def _glass_pieces(n):
+    """Glass panel lengths (m) for n 1 m edges: 2 m panels, a 1 m one for an odd rest."""
+    m = int(round(n * CELL))
+    return [2] * (m // 2) + [1] * (m % 2)
 
 
 def _cap_style(styles, vi, vj, d):
@@ -233,13 +364,64 @@ def door_leaves(map_data):
     for kind, i, j, t in edges(map_data):
         if t != EDGE_DOOR or not door_is_open(map_data, kind, i, j):
             continue
-        p0, dname, _r, _l = edge_frame(kind, i, j)
-        u, yaw = DIRS[dname]
-        yaw = door_yaw(map_data, kind, i, j, yaw)
-        hinge = _add(_add(p0, u, CELL / 2.0), _rot(DOOR_HINGE, yaw))
-        tip = _add(hinge, _rot((0.0, -1.0), yaw + DOOR_OPEN_DEG), DOOR_LEAF_W)
+        hinge, tip = leaf_segment(map_data, kind, i, j)
         out.append((hinge[0], hinge[1], tip[0], tip[1]))
     return out
+
+
+def door_swing_blocked(map_data, kind, i, j, walls=None):
+    """True if the leaf, swinging open, runs into a wall / window / glass / door leaf
+    beside the door (sampled along the leaf at a few opening angles). walls: rects as in
+    placement.wall_obstacles (computed when None)."""
+    if walls is None:
+        import placement
+        walls = placement.wall_obstacles(dict(map_data, door_state={}, door_default="closed"))
+    for ang in (30.0, 60.0, 90.0, DOOR_OPEN_DEG):
+        (hx, hy), (tx, ty) = leaf_segment(map_data, kind, i, j, angle=ang)
+        for f in (0.25, 0.5, 0.75, 1.0):          # the hinge end touches its own jamb
+            x, y = hx + (tx - hx) * f, hy + (ty - hy) * f
+            for x0, y0, x1, y1 in walls:
+                if x0 + 0.01 < x < x1 - 0.01 and y0 + 0.01 < y < y1 - 0.01:
+                    return True
+    return False
+
+
+def best_door_setup(map_data, kind, i, j):
+    """(flip, mirror) for the door that keeps its current swing room if possible and does
+    not run into a wall; None if every way is blocked."""
+    key = edge_key(kind, i, j)
+    flip0 = door_flipped(map_data, kind, i, j)
+    mir0 = door_mirrored(map_data, kind, i, j)
+    import placement
+    walls = placement.wall_obstacles(dict(map_data, door_state={}, door_default="closed"))
+    for flip, mir in ((flip0, mir0), (flip0, not mir0), (not flip0, mir0), (not flip0, not mir0)):
+        md = dict(map_data, door_flip={key: True} if flip else {},
+                  door_hinge={key: True} if mir else {})
+        if not door_swing_blocked(md, kind, i, j, walls):
+            return flip, mir
+    return None
+
+
+def fit_doors(map_data):
+    """Map data with every door whose leaf would run into a wall re-hinged / turned
+    (best_door_setup); doors that are already clear are left as they are."""
+    md = dict(map_data, door_flip=dict(map_data.get("door_flip") or {}),
+              door_hinge=dict(map_data.get("door_hinge") or {}))
+    import placement
+    walls = placement.wall_obstacles(dict(md, door_state={}, door_default="closed"))
+    for kind, i, j, t in edges(md):
+        if t != EDGE_DOOR or not door_swing_blocked(md, kind, i, j, walls):
+            continue
+        best = best_door_setup(md, kind, i, j)
+        if best:
+            key = edge_key(kind, i, j)
+            md["door_flip"].pop(key, None)
+            md["door_hinge"].pop(key, None)
+            if best[0]:
+                md["door_flip"][key] = True
+            if best[1]:
+                md["door_hinge"][key] = True
+    return md
 
 
 def required_assets(map_data):

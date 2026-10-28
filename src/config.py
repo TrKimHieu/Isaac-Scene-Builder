@@ -38,7 +38,10 @@ def project_path(*parts):
 # ===========================================================================
 # World / Physics
 # ===========================================================================
-CELL = 3.0          # size of one grid cell (m)
+CELL = 1.0          # size of one grid cell (m): walls / doors / floors sit on a 1 m grid
+LEGACY_CELL = 3.0   # cell of maps saved before the 1 m grid (no "cell" key; map_format.py
+                    # converts them on load) and the frame of old top-down renders
+KIT_M = 3.0         # module length of the Office kit pieces (SM_Wall_3m, SM_Window_3m, tiles)
 SNAP = 0.5          # snap step when placing/moving furniture (m)
 WALL_H = 3.0
 
@@ -173,7 +176,7 @@ LIGHT_CONE_SOFTNESS = 0.5
 # ===========================================================================
 BEV_SCALE = 40
 WALL_M = 0.2
-DOOR_GAP = (0.35, 0.65)
+DOOR_GAP = (0.5 - 0.47 / CELL, 0.5 + 0.47 / CELL)   # 0.94 m clear opening, edge fractions
 UNKNOWN = 205
 FREE = 254
 OCC = 0

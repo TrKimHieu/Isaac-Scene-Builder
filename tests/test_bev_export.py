@@ -8,6 +8,7 @@ from bev_export import scene_rows, norm_furni, default_shape, ROW_FIELDS
 
 def _make_map(cells=None, vedges=None, hedges=None, furniture=None, nx=4, ny=4):
     return {
+        "cell": CELL,
         "grid": [nx, ny],
         "cells": cells or {},
         "vedges": vedges or {},

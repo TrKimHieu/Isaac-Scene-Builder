@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 
 import shape_tools as st
-from config import CELL
+from config import LEGACY_CELL as CELL
 
 
 def _render(frame_px=600, obj=(150, 250, 450, 350), color=(200, 30, 30)):

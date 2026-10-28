@@ -14,7 +14,7 @@ Quy uoc:
 import os
 import json
 
-from config import CELL, WHITE_TOL, SAT_TOL, FRAME_STEPS, FRAME_MARGIN
+from config import LEGACY_CELL as CELL, WHITE_TOL, SAT_TOL, FRAME_STEPS, FRAME_MARGIN
 
 try:
     from PIL import Image
